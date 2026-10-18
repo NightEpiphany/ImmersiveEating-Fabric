@@ -1,15 +1,15 @@
 package io.github.memorytoame.immersiveeating.fabric.common.config;
 
-import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.NeoForgeConfigRegistry;
-import net.neoforged.fml.config.ModConfig;
-import net.neoforged.neoforge.common.ModConfigSpec;
+import fuzs.forgeconfigapiport.api.config.v2.ForgeConfigRegistry;
+import net.minecraftforge.common.ForgeConfigSpec;
+import net.minecraftforge.fml.config.ModConfig;
 
 public final class Config {
-   public static final ModConfigSpec COMMON_SPEC;
-   public static final ModConfigSpec.BooleanValue ENABLE_RIGHT_BUTTON;
+   public static final ForgeConfigSpec COMMON_SPEC;
+   public static final ForgeConfigSpec.BooleanValue ENABLE_RIGHT_BUTTON;
 
    static {
-      ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
+      ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
       builder.push("immersive_eating");
       ENABLE_RIGHT_BUTTON = builder.comment("Enable right-click animation").define("enableRightClickAnimation", true);
       builder.pop();
@@ -20,7 +20,7 @@ public final class Config {
    }
 
    public static void register() {
-      NeoForgeConfigRegistry.INSTANCE.register("food", ModConfig.Type.COMMON, COMMON_SPEC, "immersive_eating.toml");
+      ForgeConfigRegistry.INSTANCE.register("food", ModConfig.Type.COMMON, COMMON_SPEC, "immersive_eating.toml");
    }
 }
 

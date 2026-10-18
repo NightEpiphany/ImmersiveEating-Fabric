@@ -10,19 +10,19 @@ import io.github.memorytoame.immersiveeating.fabric.common.content.definition.Fo
 import io.github.memorytoame.immersiveeating.fabric.server.ServerAnimationManager;
 import io.github.memorytoame.immersiveeating.fabric.unique.UniqueItem;
 import java.util.UUID;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import software.bernie.geckolib.animatable.GeoAnimatable;
 import software.bernie.geckolib.animatable.GeoItem;
-import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.core.animatable.GeoAnimatable;
+import software.bernie.geckolib.core.animation.AnimationController;
 
 public final class Network {
    private static boolean registered;
@@ -35,29 +35,28 @@ public final class Network {
          return;
       }
       registered = true;
-      PayloadTypeRegistry.playC2S().register(AnimationPacket.TYPE, AnimationPacket.STREAM_CODEC);
-      PayloadTypeRegistry.playC2S().register(FinishUsePacket.TYPE, FinishUsePacket.STREAM_CODEC);
-      PayloadTypeRegistry.playC2S().register(CustomUsingPacket.TYPE, CustomUsingPacket.STREAM_CODEC);
-      PayloadTypeRegistry.playC2S().register(StopAnimationPacket.TYPE, StopAnimationPacket.STREAM_CODEC);
-      PayloadTypeRegistry.playS2C().register(StopSoundPacket.TYPE, StopSoundPacket.STREAM_CODEC);
-
-      ServerPlayNetworking.registerGlobalReceiver(AnimationPacket.TYPE, (packet, context) -> {
-         ServerPlayer player = context.player();
-         context.server().execute(() -> beginAnimation(player, packet.sessionId()));
+      ServerPlayNetworking.registerGlobalReceiver(AnimationPacket.CHANNEL, (server, player, handler, buf, responseSender) -> {
+         AnimationPacket packet = AnimationPacket.read(buf);
+         server.execute(() -> beginAnimation(player, packet.sessionId()));
       });
-      ServerPlayNetworking.registerGlobalReceiver(FinishUsePacket.TYPE, (packet, context) ->
-         context.server().execute(() -> finishUse(context.player(), packet.hand(), packet.sessionId()))
-      );
-      ServerPlayNetworking.registerGlobalReceiver(CustomUsingPacket.TYPE, (packet, context) ->
-         context.server().execute(() -> customUsing(context.player(), packet.hand(), packet.customItem(), packet.count()))
-      );
-      ServerPlayNetworking.registerGlobalReceiver(StopAnimationPacket.TYPE, (packet, context) ->
-         context.server().execute(() -> stopAnimation(context.player(), packet.sessionId()))
-      );
+      ServerPlayNetworking.registerGlobalReceiver(FinishUsePacket.CHANNEL, (server, player, handler, buf, responseSender) -> {
+         FinishUsePacket packet = FinishUsePacket.read(buf);
+         server.execute(() -> finishUse(player, packet.hand(), packet.sessionId()));
+      });
+      ServerPlayNetworking.registerGlobalReceiver(CustomUsingPacket.CHANNEL, (server, player, handler, buf, responseSender) -> {
+         CustomUsingPacket packet = CustomUsingPacket.read(buf);
+         server.execute(() -> customUsing(player, packet.hand(), packet.customItem(), packet.count()));
+      });
+      ServerPlayNetworking.registerGlobalReceiver(StopAnimationPacket.CHANNEL, (server, player, handler, buf, responseSender) -> {
+         StopAnimationPacket packet = StopAnimationPacket.read(buf);
+         server.execute(() -> stopAnimation(player, packet.sessionId()));
+      });
    }
 
    public static void sendStopSound(ServerPlayer player, UUID sessionId, ResourceLocation soundId) {
-      ServerPlayNetworking.send(player, new StopSoundPacket(sessionId, soundId));
+      FriendlyByteBuf buf = PacketByteBufs.create();
+      new StopSoundPacket(sessionId, soundId).write(buf);
+      ServerPlayNetworking.send(player, StopSoundPacket.CHANNEL, buf);
    }
 
    private static void beginAnimation(ServerPlayer player, UUID sessionId) {
@@ -109,7 +108,7 @@ public final class Network {
          return;
       }
       ItemStack stack = new ItemStack(item, Math.max(1, count));
-      if (stack.has(DataComponents.FOOD) && stack.getUseDuration(player) > 0) {
+      if (stack.isEdible() && stack.getUseDuration() > 0) {
          stack.finishUsingItem(player.level(), player);
       }
    }

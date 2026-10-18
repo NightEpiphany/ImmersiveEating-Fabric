@@ -8,8 +8,12 @@ import io.github.memorytoame.immersiveeating.fabric.network.packet.StopAnimation
 import io.github.memorytoame.immersiveeating.fabric.network.packet.StopSoundPacket;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
+import java.util.function.Consumer;
 
 public final class ClientNetwork {
    private static boolean registered;
@@ -22,24 +26,31 @@ public final class ClientNetwork {
          return;
       }
       registered = true;
-      ClientPlayNetworking.registerGlobalReceiver(StopSoundPacket.TYPE, (packet, context) ->
-         context.client().execute(() -> ClientSoundHandler.stop(packet))
-      );
+      ClientPlayNetworking.registerGlobalReceiver(StopSoundPacket.CHANNEL, (client, handler, buf, responseSender) -> {
+         StopSoundPacket packet = StopSoundPacket.read(buf);
+         client.execute(() -> ClientSoundHandler.stop(packet));
+      });
    }
 
    public static void sendAnimation(UUID sessionId) {
-      ClientPlayNetworking.send(new AnimationPacket(sessionId));
+      send(AnimationPacket.CHANNEL, new AnimationPacket(sessionId)::write);
    }
 
    public static void sendFinishUse(InteractionHand hand, UUID sessionId) {
-      ClientPlayNetworking.send(new FinishUsePacket(hand, sessionId));
+      send(FinishUsePacket.CHANNEL, new FinishUsePacket(hand, sessionId)::write);
    }
 
    public static void sendCustomUsing(InteractionHand hand, Item item, int count) {
-      ClientPlayNetworking.send(new CustomUsingPacket(hand, item, count));
+      send(CustomUsingPacket.CHANNEL, new CustomUsingPacket(hand, item, count)::write);
    }
 
    public static void sendStopAnimation(UUID sessionId) {
-      ClientPlayNetworking.send(new StopAnimationPacket(sessionId));
+      send(StopAnimationPacket.CHANNEL, new StopAnimationPacket(sessionId)::write);
+   }
+
+   private static void send(ResourceLocation channel, Consumer<FriendlyByteBuf> encoder) {
+      FriendlyByteBuf buf = PacketByteBufs.create();
+      encoder.accept(buf);
+      ClientPlayNetworking.send(channel, buf);
    }
 }

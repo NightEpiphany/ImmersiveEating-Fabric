@@ -29,14 +29,14 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 import software.bernie.geckolib.animatable.GeoItem;
-import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.core.animation.AnimationController;
 import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.cache.object.GeoCube;
 import software.bernie.geckolib.cache.object.GeoQuad;
 import software.bernie.geckolib.cache.object.GeoVertex;
 import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.renderer.GeoItemRenderer;
-import software.bernie.geckolib.util.RenderUtil;
+import software.bernie.geckolib.util.RenderUtils;
 
 @Environment(EnvType.CLIENT)
 public class CustomRenderer extends GeoItemRenderer<Empty> {
@@ -51,6 +51,7 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
       this.itemId = getItemId(id);
    }
 
+   @Override
    public void renderRecursively(
       PoseStack poseStack,
       Empty animatable,
@@ -62,12 +63,15 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
       float partialTick,
       int packedLight,
       int packedOverlay,
-      int colour
+      float red,
+      float green,
+      float blue,
+      float alpha
    ) {
       poseStack.pushPose();
-      RenderUtil.prepMatrixForBone(poseStack, bone);
+      RenderUtils.prepMatrixForBone(poseStack, bone);
       if (this.mirrorLeftHandModel && bone.getParent() == null) {
-         poseStack.mulPose(new Matrix4f().m00(-1.0F));
+         poseStack.scale(-1.0F, 1.0F, 1.0F);
       }
 
       boolean cameraBone = "camera".equals(bone.getName());
@@ -89,14 +93,17 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
             }
          }
       } else {
-         this.renderCubesOfBone(poseStack, bone, buffer, packedLight, packedOverlay, colour);
+         this.renderCubesOfBone(poseStack, bone, buffer, packedLight, packedOverlay, red, green, blue, alpha);
       }
 
       if (!isReRender) {
          this.applyRenderLayersForBone(poseStack, animatable, bone, renderType, bufferSource, buffer, partialTick, packedLight, packedOverlay);
       }
 
-      this.renderChildBones(poseStack, animatable, bone, renderType, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, colour);
+      this.renderChildBones(
+         poseStack, animatable, bone, renderType, bufferSource, buffer, isReRender, partialTick,
+         packedLight, packedOverlay, red, green, blue, alpha
+      );
       poseStack.popPose();
    }
 
@@ -105,7 +112,7 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
    ) {
       this.capturedArms.clear();
       poseStack.pushPose();
-      float partialTick = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
+      float partialTick = Minecraft.getInstance().getFrameTime();
       HeldItemMotion.applyIdleMotion(poseStack, partialTick);
       HeldItemMotion.applyWalkMotion(poseStack, partialTick);
       HeldItemMotion.applyInertiaMotion(poseStack, partialTick);
@@ -131,25 +138,36 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
       this.capturedArms.clear();
    }
 
-   public void renderCube(PoseStack poseStack, GeoCube cube, VertexConsumer buffer, int packedLight, int packedOverlay, int colour) {
-      RenderUtil.translateToPivotPoint(poseStack, cube);
-      RenderUtil.rotateMatrixAroundCube(poseStack, cube);
-      RenderUtil.translateAwayFromPivotPoint(poseStack, cube);
+   @Override
+   public void renderCube(
+      PoseStack poseStack,
+      GeoCube cube,
+      VertexConsumer buffer,
+      int packedLight,
+      int packedOverlay,
+      float red,
+      float green,
+      float blue,
+      float alpha
+   ) {
+      RenderUtils.translateToPivotPoint(poseStack, cube);
+      RenderUtils.rotateMatrixAroundCube(poseStack, cube);
+      RenderUtils.translateAwayFromPivotPoint(poseStack, cube);
       Matrix3f normalMatrix = poseStack.last().normal();
       Matrix4f poseMatrix = new Matrix4f(poseStack.last().pose());
 
       for (GeoQuad quad : cube.quads()) {
          if (quad != null) {
             Vector3f normal = normalMatrix.transform(new Vector3f(quad.normal()));
-            RenderUtil.fixInvertedFlatCube(cube, normal);
+            RenderUtils.fixInvertedFlatCube(cube, normal);
             GeoVertex[] vertices = quad.vertices();
             if (this.mirrorLeftHandModel) {
                for (int i = vertices.length - 1; i >= 0; i--) {
-                  addMirroredVertex(vertices[i], poseMatrix, normal, buffer, packedLight, packedOverlay, colour);
+                  addMirroredVertex(vertices[i], poseMatrix, normal, buffer, packedLight, packedOverlay, red, green, blue, alpha);
                }
             } else {
                for (GeoVertex vertex : vertices) {
-                  addMirroredVertex(vertex, poseMatrix, normal, buffer, packedLight, packedOverlay, colour);
+                  addMirroredVertex(vertex, poseMatrix, normal, buffer, packedLight, packedOverlay, red, green, blue, alpha);
                }
             }
          }
@@ -157,12 +175,25 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
    }
 
    private static void addMirroredVertex(
-      GeoVertex vertex, Matrix4f poseMatrix, Vector3f normal, VertexConsumer buffer, int packedLight, int packedOverlay, int colour
+      GeoVertex vertex,
+      Matrix4f poseMatrix,
+      Vector3f normal,
+      VertexConsumer buffer,
+      int packedLight,
+      int packedOverlay,
+      float red,
+      float green,
+      float blue,
+      float alpha
    ) {
       Vector4f position = poseMatrix.transform(new Vector4f(vertex.position().x(), vertex.position().y(), vertex.position().z(), 1.0F));
-      buffer.addVertex(
-         position.x(), position.y(), position.z(), colour, vertex.texU(), vertex.texV(), packedOverlay, packedLight, normal.x(), normal.y(), normal.z()
-      );
+      buffer.vertex(position.x(), position.y(), position.z())
+         .color(red, green, blue, alpha)
+         .uv(vertex.texU(), vertex.texV())
+         .overlayCoords(packedOverlay)
+         .uv2(packedLight)
+         .normal(normal.x(), normal.y(), normal.z())
+         .endVertex();
    }
 
    public RenderType getRenderType(Empty animatable, ResourceLocation texture, @Nullable MultiBufferSource bufferSource, float partialTick) {
@@ -234,15 +265,15 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
       }
 
       public ResourceLocation getModelResource(Empty animatable) {
-         return ResourceLocation.fromNamespaceAndPath("food", "geo/" + this.id + ".geo.json");
+         return new ResourceLocation("food", "geo/" + this.id + ".geo.json");
       }
 
       public ResourceLocation getTextureResource(Empty animatable) {
-         return ResourceLocation.fromNamespaceAndPath("food", "textures/item/" + this.id + ".png");
+         return new ResourceLocation("food", "textures/item/" + this.id + ".png");
       }
 
       public ResourceLocation getAnimationResource(Empty animatable) {
-         return ResourceLocation.fromNamespaceAndPath("food", "animations/" + this.id + ".animation.json");
+         return new ResourceLocation("food", "animations/" + this.id + ".animation.json");
       }
    }
 }

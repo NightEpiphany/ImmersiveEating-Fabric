@@ -32,7 +32,7 @@ public enum ArmModelOffset {
    }
 
    public static ArmModelOffset forPlayer(AbstractClientPlayer player) {
-      return player != null && "slim".equals(player.getSkin().model().id()) ? SLIM : WIDE;
+      return player != null && "slim".equals(player.getModelName()) ? SLIM : WIDE;
    }
 
    public Matrix4f matrixFor(HumanoidArm arm) {

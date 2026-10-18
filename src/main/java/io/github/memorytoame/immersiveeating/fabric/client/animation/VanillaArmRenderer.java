@@ -63,7 +63,7 @@ public final class VanillaArmRenderer {
          poseStack.last().pose().set(capturedArm.pose());
          poseStack.last().normal().set(capturedArm.normal());
          MultiBufferSource armBuffer = mirrored
-            ? new VanillaArmRenderer.MirroredArmBufferSource(bufferSource, minecraft.player.getSkin().texture())
+            ? new VanillaArmRenderer.MirroredArmBufferSource(bufferSource, minecraft.player.getSkinTextureLocation())
             : bufferSource;
          renderVanillaArm(minecraft, capturedArm, poseStack, armBuffer, packedLight);
       }

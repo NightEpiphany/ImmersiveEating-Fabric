@@ -1,18 +1,18 @@
 package io.github.memorytoame.immersiveeating.fabric.client.config;
 
-import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.NeoForgeConfigRegistry;
+import fuzs.forgeconfigapiport.api.config.v2.ForgeConfigRegistry;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.neoforged.fml.config.ModConfig;
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.minecraftforge.common.ForgeConfigSpec;
+import net.minecraftforge.fml.config.ModConfig;
 
 @Environment(EnvType.CLIENT)
 public final class ClientConfig {
-    public static final ModConfigSpec CLIENT_SPEC;
-    public static final ModConfigSpec.BooleanValue HIDE_GUI_WHEN_EATING;
+    public static final ForgeConfigSpec CLIENT_SPEC;
+    public static final ForgeConfigSpec.BooleanValue HIDE_GUI_WHEN_EATING;
 
     static {
-        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
+        ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
         builder.push("immersive_eating");
         HIDE_GUI_WHEN_EATING = builder.comment("Hide Your hotbar & status bar when eating").define("hideGUIWhenEating", true);
         builder.pop();
@@ -23,6 +23,6 @@ public final class ClientConfig {
     }
 
     public static void register() {
-        NeoForgeConfigRegistry.INSTANCE.register("food", ModConfig.Type.CLIENT, CLIENT_SPEC, "immersive_eating_client.toml");
+        ForgeConfigRegistry.INSTANCE.register("food", ModConfig.Type.CLIENT, CLIENT_SPEC, "immersive_eating_client.toml");
     }
 }

@@ -23,9 +23,10 @@ public class SoundJson {
          if (definition.getSounds() != null) {
             for (String sound_namespace : definition.getSounds().values()) {
                if (sound_namespace != null && !sound_namespace.isBlank()) {
-                  ResourceLocation soundId = ResourceLocation.parse(sound_namespace);
-                  String name = soundId.getPath();
-                  addSound(root, name, soundId.toString());
+                  ResourceLocation soundId = ResourceLocation.tryParse(sound_namespace);
+                  if (soundId != null) {
+                     addSound(root, soundId.getPath(), soundId.toString());
+                  }
                }
             }
          }

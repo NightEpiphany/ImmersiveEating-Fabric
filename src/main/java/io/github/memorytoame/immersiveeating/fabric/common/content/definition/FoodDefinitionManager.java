@@ -27,7 +27,7 @@ public final class FoodDefinitionManager implements SimpleSynchronousResourceRel
 
    @Override
    public ResourceLocation getFabricId() {
-      return ResourceLocation.fromNamespaceAndPath(KaleidoscopeImmersiveEating.MOD_ID, "food_definitions");
+      return new ResourceLocation(KaleidoscopeImmersiveEating.MOD_ID, "food_definitions");
    }
 
    @Override

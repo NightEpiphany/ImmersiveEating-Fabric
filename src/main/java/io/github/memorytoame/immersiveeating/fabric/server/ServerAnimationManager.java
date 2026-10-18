@@ -55,7 +55,7 @@ public final class ServerAnimationManager {
       ItemStack heldStack = player.getItemInHand(state.hand());
       ItemStack expectedStack = state.stack();
       return !heldStack.isEmpty()
-         && ItemStack.isSameItemSameComponents(heldStack, expectedStack)
+         && ItemStack.isSameItemSameTags(heldStack, expectedStack)
          && heldStack.getCount() == expectedStack.getCount()
          && GeoItem.getId(heldStack) == state.controllerId();
    }

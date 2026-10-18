@@ -10,7 +10,7 @@ import net.minecraft.world.item.Item;
 public final class ModItems {
    public static final Empty EMPTY = Registry.register(
       BuiltInRegistries.ITEM,
-      ResourceLocation.fromNamespaceAndPath(KaleidoscopeImmersiveEating.MOD_ID, "empty"),
+      new ResourceLocation(KaleidoscopeImmersiveEating.MOD_ID, "empty"),
       new Empty(new Item.Properties())
    );
 

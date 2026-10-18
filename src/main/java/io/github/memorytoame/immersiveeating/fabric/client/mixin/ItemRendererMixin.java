@@ -22,7 +22,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import software.bernie.geckolib.GeckoLibConstants;
 import software.bernie.geckolib.animatable.GeoItem;
 
 @Environment(EnvType.CLIENT)
@@ -81,7 +80,7 @@ public class ItemRendererMixin {
                }
 
                if (instanceId != Long.MAX_VALUE) {
-                  proxy.set(GeckoLibConstants.STACK_ANIMATABLE_ID_COMPONENT.get(), instanceId);
+                  proxy.getOrCreateTag().putLong(GeoItem.ID_NBT_KEY, instanceId);
                }
 
                customRenderer.renderByItem(proxy, context, poseStack, buffer, light, overlay);

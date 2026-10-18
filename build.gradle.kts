@@ -35,14 +35,6 @@ base {
 	archivesName = providers.gradleProperty("archives_base_name")
 }
 
-fabricApi {
-	configureTests {
-		createSourceSet = true
-		modId = "food_test"
-		enableClientGameTests = true
-	}
-}
-
 dependencies {
 	testImplementation(platform("org.junit:junit-bom:5.11.4"))
 	testImplementation("org.junit.jupiter:junit-jupiter")
@@ -55,18 +47,16 @@ dependencies {
 		providers.gradleProperty(
 			"geckolib_version"
 		).get()
-	}")
-	modImplementation ("maven.modrinth:kaleidoscope-cookery-refabricated:${providers.gradleProperty("kaleidoscope_cookery_version").get()}-fabric+mc${providers.gradleProperty("minecraft_version").get()}")
-	modImplementation ("maven.modrinth:kaleidoscope-tavern-refabricated:${providers.gradleProperty("kaleidoscope_tavern_version").get()}-fabric+mc${providers.gradleProperty("minecraft_version").get()}")
+	}") {
+		exclude("com.eliotlash.mclib")
+	}
+	modCompileOnly ("maven.modrinth:kaleidoscope-cookery-refabricated:${providers.gradleProperty("kaleidoscope_cookery_version").get()}-fabric+mc${providers.gradleProperty("minecraft_version").get()}")
+	modCompileOnly("maven.modrinth:kaleidoscope-tavern-refabricated:${providers.gradleProperty("kaleidoscope_tavern_version").get()}-fabric+mc${providers.gradleProperty("minecraft_version").get()}")
 	modImplementation("fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${providers.gradleProperty("forge_config_api_version").get()}")
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation("net.fabricmc.fabric-api:fabric-api:${providers.gradleProperty("fabric_api_version").get()}")
 	// Punchy
-	compileOnly("maven.modrinth:8aoMKplv:kburaezy")
-}
-
-tasks.test {
-	useJUnitPlatform()
+	compileOnly("maven.modrinth:8aoMKplv:sou16Bcx")
 }
 
 tasks.processResources {

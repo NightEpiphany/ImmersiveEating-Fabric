@@ -19,7 +19,7 @@ public final class AnimationResourceChecker {
         if (stack != null && !stack.isEmpty() && animationName != null && !animationName.isBlank()) {
             ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
             String animationId = "sakura_fubuki".equals(itemId.getPath()) ? "flower_tea" : itemId.getPath();
-            ResourceLocation animationResource = ResourceLocation.fromNamespaceAndPath("food", "animations/" + animationId + ".animation.json");
+            ResourceLocation animationResource = new ResourceLocation("food", "animations/" + animationId + ".animation.json");
             return Minecraft.getInstance().getResourceManager().getResource(animationResource).map(resource -> {
                 try (Reader reader = new InputStreamReader(resource.open(), StandardCharsets.UTF_8)) {
                     JsonElement root = JsonParser.parseReader(reader);

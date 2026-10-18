@@ -1,6 +1,7 @@
 package io.github.memorytoame.immersiveeating.fabric.common.content.item;
 
 import io.github.memorytoame.immersiveeating.fabric.common.content.definition.FoodDefinitionManager;
+import io.github.memorytoame.immersiveeating.fabric.client.render.CustomRenderer;
 import io.github.memorytoame.immersiveeating.fabric.init.ModItems;
 import io.github.memorytoame.immersiveeating.fabric.unique.UniqueItem;
 import java.util.ArrayList;
@@ -15,15 +16,16 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import software.bernie.geckolib.animatable.GeoItem;
-import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.animation.AnimationController;
-import software.bernie.geckolib.animation.PlayState;
-import software.bernie.geckolib.animation.RawAnimation;
-import software.bernie.geckolib.animation.AnimatableManager.ControllerRegistrar;
+import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.core.animation.AnimationController;
+import software.bernie.geckolib.core.animation.RawAnimation;
+import software.bernie.geckolib.core.animation.AnimatableManager.ControllerRegistrar;
+import software.bernie.geckolib.core.object.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 public class Empty extends Item implements GeoItem {
    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+   private final Supplier<Object> renderProvider = GeoItem.makeRenderer(this);
    private static Consumer<ItemStack> clientUseReequipHandler = ignored -> {};
    private static Supplier<ItemStack> clientAnimationStackSupplier = () -> ItemStack.EMPTY;
    private static Runnable clientAnimationStackClearHandler = () -> {};
@@ -147,7 +149,7 @@ public class Empty extends Item implements GeoItem {
                   ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(animationStack.getItem());
                   String soundKey = keyFrames.getKeyframeData().getSound();
                   if ("pickup".equals(soundKey)) {
-                     clientSoundHandler.accept(ResourceLocation.fromNamespaceAndPath("minecraft", "entity.item.pickup"));
+                     clientSoundHandler.accept(new ResourceLocation("minecraft", "entity.item.pickup"));
                   }
 
                   ResourceLocation soundId = FoodDefinitionManager.getSound(itemId.toString(), soundKey);
@@ -184,6 +186,16 @@ public class Empty extends Item implements GeoItem {
          });
          controllers.add(controller);
       }
+   }
+
+   @Override
+   public void createRenderer(Consumer<Object> consumer) {
+      consumer.accept(new CustomRenderer("empty"));
+   }
+
+   @Override
+   public Supplier<Object> getRenderProvider() {
+      return this.renderProvider;
    }
 
    private AnimationController<Empty> createControl(String name) {

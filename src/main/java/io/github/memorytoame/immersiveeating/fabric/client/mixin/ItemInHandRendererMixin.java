@@ -114,7 +114,7 @@ public abstract class ItemInHandRendererMixin {
             this.food$selectedMainHandItem = mainHandItem.copy();
             this.food$hasTrackedSelectedItem = true;
          } else {
-            if (!ItemStack.isSameItemSameComponents(this.food$selectedMainHandItem, mainHandItem)) {
+            if (!ItemStack.isSameItemSameTags(this.food$selectedMainHandItem, mainHandItem)) {
                this.food$selectedMainHandItem = mainHandItem.copy();
                if (!this.food$waitingForSwitchOut && food$trigger(this.food$renderedMainHandItem, "switchout")) {
                   this.food$switchOutItem = this.food$renderedMainHandItem.copy();
@@ -148,7 +148,7 @@ public abstract class ItemInHandRendererMixin {
             this.food$renderedMainHandItem = this.mainHandItem.copy();
             this.food$hasTrackedRenderedItem = true;
          } else {
-            if (!ItemStack.isSameItemSameComponents(this.food$renderedMainHandItem, this.mainHandItem)) {
+            if (!ItemStack.isSameItemSameTags(this.food$renderedMainHandItem, this.mainHandItem)) {
                food$trigger(this.mainHandItem, "switchin");
                this.food$renderedMainHandItem = this.mainHandItem.copy();
             }
@@ -177,7 +177,7 @@ public abstract class ItemInHandRendererMixin {
 
       ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
       String animationId = "sakura_fubuki".equals(itemId.getPath()) ? "flower_tea" : itemId.getPath();
-      ResourceLocation animationResource = ResourceLocation.fromNamespaceAndPath("food", "animations/" + animationId + ".animation.json");
+      ResourceLocation animationResource = new ResourceLocation("food", "animations/" + animationId + ".animation.json");
       return Minecraft.getInstance().getResourceManager().getResource(animationResource).map(resource -> {
          try (Reader reader = new InputStreamReader(resource.open(), StandardCharsets.UTF_8)) {
             JsonElement root = JsonParser.parseReader(reader);
