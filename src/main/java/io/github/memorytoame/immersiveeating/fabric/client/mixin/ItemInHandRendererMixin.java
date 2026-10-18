@@ -3,6 +3,7 @@ package io.github.memorytoame.immersiveeating.fabric.client.mixin;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.mojang.blaze3d.vertex.PoseStack;
 import io.github.memorytoame.immersiveeating.fabric.client.animation.GeckoLibAssetPaths;
 import io.github.memorytoame.immersiveeating.fabric.common.content.definition.FoodDefinitionManager;
 import io.github.memorytoame.immersiveeating.fabric.common.content.item.Empty;
@@ -50,7 +51,7 @@ public abstract class ItemInHandRendererMixin {
    @Inject(method = "submitHandsWithItems", at = @At("HEAD"))
    private void food$prepareFirstPersonState(
       float partialTicks,
-      com.mojang.blaze3d.vertex.PoseStack poseStack,
+      PoseStack poseStack,
       SubmitNodeCollector submitNodeCollector,
       PlayerRenderState playerState,
       FirstPersonHandsAndItemsRenderState state,

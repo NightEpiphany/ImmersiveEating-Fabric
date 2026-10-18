@@ -1,7 +1,6 @@
 package io.github.memorytoame.immersiveeating.fabric.client.mixin;
 
 import com.geckolib.GeckoLibConstants;
-import com.geckolib.animatable.GeoItem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import io.github.memorytoame.immersiveeating.fabric.client.animation.ClientAnimationManager;
 import io.github.memorytoame.immersiveeating.fabric.client.render.CustomRenderer;
@@ -23,6 +22,7 @@ import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -52,21 +52,21 @@ public abstract class ItemRendererMixin {
       float xRot,
       InteractionHand hand,
       float attack,
-      ItemStack stack,
+      ItemStack itemStack,
       float inverseArmHeight,
       PoseStack poseStack,
-      SubmitNodeCollector renderTasks,
+      SubmitNodeCollector submitNodeCollector,
       int lightCoords,
       CallbackInfo ci
    ) {
-      if (hand != InteractionHand.MAIN_HAND || !FoodDefinitionManager.init_ItemList.contains(stack.getItem())) {
+      if (hand != InteractionHand.MAIN_HAND || !FoodDefinitionManager.init_ItemList.contains(itemStack.getItem())) {
          return;
       }
 
       // A normal right-click food use is rendered by vanilla. The custom
       // model is reserved for the explicit GeckoLib eating session, which
       // leaves the player's vanilla isUsingItem flag unset.
-      if (food$isVanillaUse(playerState, hand, stack)) {
+      if (food$isVanillaUse(playerState, hand, itemStack)) {
          return;
       }
 
@@ -76,7 +76,7 @@ public abstract class ItemRendererMixin {
       ItemDisplayContext displayContext = mainArm == HumanoidArm.LEFT
          ? ItemDisplayContext.FIRST_PERSON_LEFT_HAND
          : ItemDisplayContext.FIRST_PERSON_RIGHT_HAND;
-      Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+      Identifier id = BuiltInRegistries.ITEM.getKey(itemStack.getItem());
       poseStack.pushPose();
       if (mainArm == HumanoidArm.LEFT) {
          poseStack.translate(
@@ -92,9 +92,9 @@ public abstract class ItemRendererMixin {
          );
       }
 
-      CustomRenderer customRenderer = CustomRenderer.rendererMap.computeIfAbsent(id.getPath(), key -> new CustomRenderer(id.toString()));
+      CustomRenderer customRenderer = CustomRenderer.rendererMap.computeIfAbsent(id.getPath(), _ -> new CustomRenderer(id.toString()));
       ItemStack proxy = new ItemStack(ModItems.EMPTY);
-      Long stackId = stack.get(GeckoLibConstants.STACK_ANIMATABLE_ID_COMPONENT.get());
+      Long stackId = itemStack.get(GeckoLibConstants.STACK_ANIMATABLE_ID_COMPONENT.get());
       long instanceId = stackId == null ? Long.MAX_VALUE : stackId;
       if (instanceId == Long.MAX_VALUE && playerState.avatarRenderState != null) {
          instanceId = ClientAnimationManager.getOrCreateControllerId(Minecraft.getInstance().player);
@@ -108,7 +108,7 @@ public abstract class ItemRendererMixin {
          proxy,
          displayContext,
          poseStack,
-         renderTasks,
+         submitNodeCollector,
          lightCoords,
          OverlayTexture.NO_OVERLAY,
          playerState
@@ -119,6 +119,7 @@ public abstract class ItemRendererMixin {
       ci.cancel();
    }
 
+   @Unique
    private static boolean food$isVanillaUse(PlayerRenderState playerState, InteractionHand hand, ItemStack stack) {
       if (playerState.avatarRenderState == null
          || !playerState.avatarRenderState.isUsingItem
