@@ -5,6 +5,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
@@ -22,6 +23,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+@SuppressWarnings("unchecked")
 public class FoodDynamicPack implements PackResources {
    private static final PackMetadataSection METADATA = new PackMetadataSection(
            Component.literal("Provides models and animations."), PackFormat.of(97).minorRange()
@@ -66,7 +68,8 @@ public class FoodDynamicPack implements PackResources {
    }
 
    public IoSupplier<InputStream> getRootResource(String... path) {
-      return path.length == 1 && path[0].equals("pack.png") ? () -> FoodDynamicPack.class.getResourceAsStream("/pack.png") : null;
+      return path.length == 1 && path[0].equals("pack.png") ? () ->
+              Objects.requireNonNull(FoodDynamicPack.class.getResourceAsStream("/assets/food/pack.png")) : null;
    }
 
    @Override
@@ -74,10 +77,12 @@ public class FoodDynamicPack implements PackResources {
       return (T)(serializer == PackMetadataSection.CLIENT_TYPE ? METADATA : null);
    }
 
+   @Override
    public @NonNull PackLocationInfo location() {
       return LOCATION;
    }
 
+   @Override
    public @NonNull String packId() {
       return "food_dynamic";
    }
