@@ -16,7 +16,8 @@
     "MouseHandlerMixin",
     "PlayerRendererMixin",
     "PunchyConfigMixin",
-    "accessor.CameraAccessor"
+    "accessor.CameraAccessor",
+    "accessor.ItemInHandRendererAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -27,8 +27,8 @@ Kaleidoscope: ImmersiveEating 是一个第一人称进食动画模组，已与�
 
 - Minecraft `1.20.1` `1.21.1` `26.x`
 - Forge `47.4.22` NeoForge: `21.1.248` Fabric `0.19.5`
-- GeckoLib `4.8.2` (1.20.1/1.21.1 legacy ports); Fabric 26.3: `5.5.7`
-- 森罗物语（Kaleidoscope Cookery）`1.6.0-forge+mc1.20.1`（单向联动） NeoForge:`1.6.0-neoforge+mc1.21.1` Fabric(refabricated):`1.6.0.5-fabric+mc26.3`
+- GeckoLib `4.8.2` (1.20.1/1.21.1 legacy ports); Fabric 26.1.2: `5.5.2`
+- 森罗物语（Kaleidoscope Cookery）`1.6.0-forge+mc1.20.1`（单向联动） NeoForge:`1.6.0-neoforge+mc1.21.1` Fabric(refabricated):`1.6.0.5-fabric+mc26.1.2`
 ## 扩展
 一个食物扩展由定义、模型、动画和材质组成：
 

@@ -12,15 +12,12 @@ import io.github.memorytoame.immersiveeating.fabric.utils.AnimationUtils;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.SwingAnimation;
 
 @Environment(EnvType.CLIENT)
 public final class InputEvents {
@@ -48,7 +45,7 @@ public final class InputEvents {
       }
 
       if (mc == null || mc.player == null || !Config.ENABLE_RIGHT_BUTTON.get()
-              || mc.player.isCrouching() || isAnimationGui(mc.gui.screen())) {
+              || mc.player.isCrouching() || isAnimationGui(mc.screen)) {
          return false;
       }
 
@@ -70,13 +67,13 @@ public final class InputEvents {
       if (mc.player == null || !mc.options.keyUse.isDown()) {
          rightClickHandled = false;
       }
-      if (mc.player == null || isAnimationGui(mc.gui.screen()) || !AnimationUtils.isInputLocked()) {
+      if (mc.player == null || isAnimationGui(mc.screen) || !AnimationUtils.isInputLocked()) {
          return;
       }
 
       if (mc.options.keyAttack.consumeClick()) {
          AnimationUtils.stopAnimationControl();
-         mc.player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
+         mc.player.swing(InteractionHand.MAIN_HAND, false);
       }
    }
 
@@ -99,11 +96,11 @@ public final class InputEvents {
       }
 
       AnimationUtils.updateCustomUseState(mc);
-      if (!isAnimationGui(mc.gui.screen())) {
+      if (!isAnimationGui(mc.screen)) {
          AnimationUtils.cancelIfHeldItemChanged(mc);
       }
 
-      if ((mc.gui.screen() == null || isAnimationGui(mc.gui.screen())) && mc.options.getCameraType().isFirstPerson()) {
+      if ((mc.screen == null || isAnimationGui(mc.screen)) && mc.options.getCameraType().isFirstPerson()) {
          AnimationUtils.checkEatAnimationState();
          if (AnimationUtils.isAnimationLocked()) {
             var accessToInventory = (InventoryAccessor) mc.player.getInventory();

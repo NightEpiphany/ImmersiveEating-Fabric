@@ -14,4 +14,4 @@ pluginManagement {
 }
 
 // Should match your modid
-rootProject.name = "KI-26.3-fabric"
+rootProject.name = "KI-26.1.2-fabric"

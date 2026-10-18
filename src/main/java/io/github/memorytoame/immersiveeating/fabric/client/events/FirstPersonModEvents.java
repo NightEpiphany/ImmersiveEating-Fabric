@@ -2,6 +2,7 @@ package io.github.memorytoame.immersiveeating.fabric.client.events;
 
 import io.github.memorytoame.immersiveeating.fabric.KaleidoscopeImmersiveEating;
 import io.github.memorytoame.immersiveeating.fabric.client.animation.ClientAnimationManager;
+import io.github.memorytoame.immersiveeating.fabric.client.mixin.accessor.ItemInHandRendererAccessor;
 import io.github.memorytoame.immersiveeating.fabric.common.content.definition.FoodDefinitionManager;
 import io.github.memorytoame.immersiveeating.fabric.utils.AnimationUtils;
 import net.fabricmc.api.EnvType;
@@ -9,7 +10,6 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.state.level.FirstPersonHandsAndItemsRenderState;
 import net.minecraft.world.item.ItemStack;
 
 import java.lang.reflect.Method;
@@ -124,10 +124,10 @@ public final class FirstPersonModEvents {
       if (stack.isEmpty()) {
          return;
       }
-      FirstPersonHandsAndItemsRenderState state = minecraft.gameRenderer.gameRenderState().levelRenderState.playerRenderState.firstPersonHandsAndItems;
+      ItemInHandRendererAccessor itemInHandRenderer = (ItemInHandRendererAccessor) minecraft.gameRenderer.itemInHandRenderer;
       ItemStack fakeStack = stack.copy();
       fakeStack.setCount(stack.getCount() + 1);
-      state.mainHandItem = fakeStack;
+      itemInHandRenderer.setMainHandItem(fakeStack);
    }
 
    private static void restorePreviousState() {

@@ -3,6 +3,9 @@ package io.github.memorytoame.immersiveeating.fabric.client.mixin;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import io.github.memorytoame.immersiveeating.fabric.client.animation.GeckoLibAssetPaths;
 import io.github.memorytoame.immersiveeating.fabric.common.content.definition.FoodDefinitionManager;
 import io.github.memorytoame.immersiveeating.fabric.common.content.item.Empty;
@@ -14,24 +17,33 @@ import io.github.memorytoame.immersiveeating.fabric.utils.AnimationUtils;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.FirstPersonHandsAndItemsRenderer;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.ItemInHandRenderer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.state.level.FirstPersonHandsAndItemsRenderState;
-import net.minecraft.client.renderer.state.level.PlayerRenderState;
-import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Environment(EnvType.CLIENT)
-@Mixin(FirstPersonHandsAndItemsRenderer.class)
+@Mixin(ItemInHandRenderer.class)
 public abstract class ItemInHandRendererMixin {
+   @Shadow
+   private ItemStack mainHandItem;
+
+   @Shadow
+   private float mainHandHeight;
+
+   @Shadow
+   private float oMainHandHeight;
+
    @Unique
    private ItemStack food$selectedMainHandItem = ItemStack.EMPTY;
    @Unique
@@ -47,16 +59,16 @@ public abstract class ItemInHandRendererMixin {
    @Unique
    private boolean food$waitingForSwitchOut;
 
-   @Inject(method = "submitHandsWithItems", at = @At("HEAD"))
+   @Inject(method = "renderHandsWithItems", at = @At("HEAD"))
    private void food$prepareFirstPersonState(
-      float partialTicks,
-      com.mojang.blaze3d.vertex.PoseStack poseStack,
-      SubmitNodeCollector submitNodeCollector,
-      PlayerRenderState playerState,
-      FirstPersonHandsAndItemsRenderState state,
-      CallbackInfo ci
+           float frameInterp,
+           PoseStack poseStack,
+           SubmitNodeCollector submitNodeCollector,
+           LocalPlayer player,
+           int lightCoords,
+           CallbackInfo ci
    ) {
-      ItemStack selectedMainHandItem = state.mainHandItem;
+      ItemStack selectedMainHandItem = player.getMainHandItem();
       if (!this.food$hasTrackedSelectedItem) {
          this.food$selectedMainHandItem = selectedMainHandItem.copy();
          this.food$hasTrackedSelectedItem = true;
@@ -71,41 +83,81 @@ public abstract class ItemInHandRendererMixin {
 
       if (this.food$waitingForSwitchOut) {
          if (Empty.isClientAnimationPlaying(this.food$switchOutItem, "switchout")) {
-            state.mainHandItem = this.food$switchOutItem.copy();
-            state.mainHandHeight = 1.0F;
-            state.oldMainHandHeight = 1.0F;
+            this.mainHandItem = this.food$switchOutItem.copy();
+            this.mainHandHeight = 1.0F;
+            this.oMainHandHeight = 1.0F;
          } else {
-            state.mainHandItem = this.food$pendingMainHandItem.copy();
-            state.mainHandHeight = 0.0F;
-            state.oldMainHandHeight = 0.0F;
-            this.food$renderedMainHandItem = state.mainHandItem.copy();
+            this.mainHandItem = this.food$pendingMainHandItem.copy();
+            this.mainHandHeight = 0.0F;
+            this.oMainHandHeight = 0.0F;
+            this.food$renderedMainHandItem = this.mainHandItem.copy();
             this.food$waitingForSwitchOut = false;
             this.food$switchOutItem = ItemStack.EMPTY;
             this.food$pendingMainHandItem = ItemStack.EMPTY;
-            food$trigger(state.mainHandItem, "switchin");
+            food$trigger(this.mainHandItem, "switchin");
          }
       } else if (!this.food$hasTrackedRenderedItem) {
-         this.food$renderedMainHandItem = state.mainHandItem.copy();
+         this.food$renderedMainHandItem = this.mainHandItem.copy();
          this.food$hasTrackedRenderedItem = true;
-      } else if (!ItemStack.isSameItemSameComponents(this.food$renderedMainHandItem, state.mainHandItem)) {
-         food$trigger(state.mainHandItem, "switchin");
-         this.food$renderedMainHandItem = state.mainHandItem.copy();
+      } else if (!ItemStack.isSameItemSameComponents(this.food$renderedMainHandItem, this.mainHandItem)) {
+         food$trigger(this.mainHandItem, "switchin");
+         this.food$renderedMainHandItem = this.mainHandItem.copy();
+      }
+   }
+
+   @WrapOperation(
+      method = "renderHandsWithItems",
+      at = @At(
+         value = "INVOKE",
+         target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;renderArmWithItem(Lnet/minecraft/client/player/AbstractClientPlayer;FFLnet/minecraft/world/InteractionHand;FLnet/minecraft/world/item/ItemStack;FLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;I)V",
+         ordinal = 1
+      )
+   )
+   private void food$skipOffHandForCustomMainHand(
+      ItemInHandRenderer renderer,
+      AbstractClientPlayer player,
+      float frameInterp,
+      float xRot,
+      InteractionHand hand,
+      float attack,
+      ItemStack itemStack,
+      float inverseArmHeight,
+      PoseStack poseStack,
+      SubmitNodeCollector submitNodeCollector,
+      int lightCoords,
+      Operation<Void> original
+   ) {
+      if (hand == InteractionHand.OFF_HAND
+         && (this.food$isCustomMainHand(this.food$selectedMainHandItem)
+            || this.food$isCustomMainHand(this.food$renderedMainHandItem))
+         && !food$isVanillaUse(player, InteractionHand.MAIN_HAND, this.food$selectedMainHandItem)) {
+         return;
       }
 
-      if ((this.food$isCustomMainHand(state.mainHandItem) || this.food$isCustomMainHand(this.food$renderedMainHandItem))
-         && !food$isVanillaUse(playerState, InteractionHand.MAIN_HAND, state.mainHandItem)) {
-         state.handRenderSelection = FirstPersonHandsAndItemsRenderState.HandRenderSelection.RENDER_MAIN_HAND_ONLY;
-      }
+      original.call(
+         renderer,
+         player,
+         frameInterp,
+         xRot,
+         hand,
+         attack,
+         itemStack,
+         inverseArmHeight,
+         poseStack,
+         submitNodeCollector,
+         lightCoords
+      );
    }
 
    @Unique
    private static boolean food$isVanillaUse(
-      PlayerRenderState playerState,
+      AbstractClientPlayer player,
       InteractionHand hand,
       ItemStack stack
    ) {
-      AvatarRenderState avatar = playerState.avatarRenderState;
-      if (avatar == null || !avatar.isUsingItem || avatar.useItemHand != hand) {
+      if (player == null
+         || !player.isUsingItem()
+         || player.getUsedItemHand() != hand) {
          return false;
       }
 
