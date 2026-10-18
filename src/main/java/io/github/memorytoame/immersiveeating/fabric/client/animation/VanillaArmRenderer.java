@@ -13,12 +13,13 @@ import java.util.Locale;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
-import net.minecraft.client.renderer.entity.state.AvatarRenderState;
-import net.minecraft.client.renderer.state.level.PlayerRenderState;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.entity.player.PlayerModelPart;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -83,30 +84,31 @@ public final class VanillaArmRenderer {
       List<CapturedArm> capturedArms,
       SubmitNodeCollector renderTasks,
       int packedLight,
-      PlayerRenderState playerState
+      AbstractClientPlayer playerState
    ) {
       if (capturedArms.isEmpty() || playerState == null) {
          return;
       }
 
-      AvatarRenderState avatarState = playerState.avatarRenderState;
-      if (avatarState == null || avatarState.isInvisible || avatarState.skin == null || avatarState.skin.body() == null) {
+      if (playerState.isInvisible() || playerState.getSkin() == null || playerState.getSkin().body() == null) {
          return;
       }
 
-      AvatarRenderer<?> avatarRenderer = Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(avatarState);
-      Identifier skinTexture = avatarState.skin.body().texturePath();
+      EntityRenderer<? super AbstractClientPlayer, ?> renderer = Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(playerState);
+      Identifier skinTexture = playerState.getSkin().body().texturePath();
       for (CapturedArm capturedArm : capturedArms) {
          PoseStack armPose = new PoseStack();
          armPose.last().pose().set(capturedArm.pose());
          armPose.last().normal().set(capturedArm.normal());
          boolean hasSleeve = capturedArm.arm() == HumanoidArm.RIGHT
-            ? avatarState.showRightSleeve
-            : avatarState.showLeftSleeve;
-         if (capturedArm.arm() == HumanoidArm.RIGHT) {
-            avatarRenderer.renderRightHand(armPose, renderTasks, packedLight, skinTexture, hasSleeve);
-         } else {
-            avatarRenderer.renderLeftHand(armPose, renderTasks, packedLight, skinTexture, hasSleeve);
+            ? playerState.isModelPartShown(PlayerModelPart.RIGHT_SLEEVE)
+            : playerState.isModelPartShown(PlayerModelPart.LEFT_SLEEVE);
+         if (renderer instanceof AvatarRenderer avatarRenderer) {
+            if (capturedArm.arm() == HumanoidArm.RIGHT) {
+               avatarRenderer.renderRightHand(armPose, renderTasks, packedLight, skinTexture, hasSleeve);
+            } else {
+               avatarRenderer.renderLeftHand(armPose, renderTasks, packedLight, skinTexture, hasSleeve);
+            }
          }
       }
    }

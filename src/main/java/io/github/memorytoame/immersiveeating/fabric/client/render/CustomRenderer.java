@@ -23,11 +23,11 @@ import java.util.Map;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
-import net.minecraft.client.renderer.state.level.PlayerRenderState;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
@@ -42,7 +42,7 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
    private final List<VanillaArmRenderer.CapturedArm> capturedArms = new ArrayList<>(4);
    private boolean mirrorLeftHandModel;
    private boolean capturingCameraRotation;
-   private PlayerRenderState playerRenderState;
+   private AbstractClientPlayer player;
 
    public CustomRenderer(String id) {
       super(new Model(getModelId(id)));
@@ -69,10 +69,10 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
       SubmitNodeCollector renderTasks,
       int packedLight,
       int packedOverlay,
-      PlayerRenderState playerRenderState
+      AbstractClientPlayer playerRenderState
    ) {
       Minecraft minecraft = Minecraft.getInstance();
-      this.playerRenderState = playerRenderState;
+      this.player = playerRenderState;
       this.capturedArms.clear();
       GeoItemRenderer.RenderData renderData = new GeoItemRenderer.RenderData(
          stack,
@@ -92,7 +92,7 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
       try {
          submit(renderState, poseStack, renderTasks, 0);
       } finally {
-         this.playerRenderState = null;
+         this.player = null;
          this.capturedArms.clear();
       }
    }
@@ -100,7 +100,7 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
 
    @Override
    public void postRenderPass(@NonNull RenderPassInfo<GeoRenderState> renderPassInfo, @NonNull SubmitNodeCollector renderTasks) {
-      if (this.playerRenderState == null || !isFirstPerson(renderPassInfo)) {
+      if (this.player == null || !isFirstPerson(renderPassInfo)) {
          return;
       }
 
@@ -130,7 +130,7 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
          this.capturedArms,
          renderTasks,
          renderPassInfo.packedLight(),
-         this.playerRenderState
+         this.player
       );
    }
 
@@ -148,7 +148,7 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
       ItemDisplayContext transformType = renderState.getOrDefaultGeckolibData(DataTickets.ITEM_RENDER_PERSPECTIVE, ItemDisplayContext.NONE);
       return transformType == ItemDisplayContext.FIRST_PERSON_LEFT_HAND
          ? RenderTypes.entityTranslucent(texture)
-         : RenderTypes.entityTranslucentCull(texture);
+         : RenderTypes.entityTranslucentCullItemTarget(texture);
    }
 
    @Override

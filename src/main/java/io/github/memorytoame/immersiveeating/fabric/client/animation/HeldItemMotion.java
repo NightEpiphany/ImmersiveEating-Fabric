@@ -54,8 +54,8 @@ public class HeldItemMotion {
          float pitch = Mth.cos(time * 0.06F) * 0.35F;
          float roll = Mth.sin(time * 0.085F) * 0.5F;
          poseStack.translate(x, y, 0.0F);
-         poseStack.rotateDegrees(Axis.XP, pitch);
-         poseStack.rotateDegrees(Axis.ZP, roll);
+         poseStack.mulPose(Axis.XP.rotationDegrees(pitch));
+         poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
       }
    }
 
@@ -78,8 +78,8 @@ public class HeldItemMotion {
          float pitch = Mth.cos(phase * 2.0F) * 0.05F * amount;
          float roll = Mth.sin(phase) * 0.035F * amount;
          poseStack.translate(x, y, 0.0F);
-         poseStack.rotateDegrees(Axis.XP, pitch);
-         poseStack.rotateDegrees(Axis.ZP, roll);
+         poseStack.mulPose(Axis.XP.rotationDegrees(pitch));
+         poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
       }
    }
 
@@ -90,8 +90,8 @@ public class HeldItemMotion {
          float roll = Mth.lerp(partialTick, prevInertiaRoll, inertiaRoll);
          float intensity = mc.player.isUsingItem() ? 0.15F : 1.0F;
          float pitchIntensity = intensity * 0.5F;
-         poseStack.rotateDegrees(Axis.XP, (pitch * pitchIntensity));
-         poseStack.rotateDegrees(Axis.ZP, (roll * intensity));
+         poseStack.mulPose(Axis.XP.rotationDegrees(pitch * pitchIntensity));
+         poseStack.mulPose(Axis.ZP.rotationDegrees(roll * intensity));
       }
    }
 
@@ -201,7 +201,7 @@ public class HeldItemMotion {
          float verticalIntensity = intensity / 3.0F;
          float pitchIntensity = mc.player.isSprinting() && !mc.player.onGround() ? intensity / 12.0F : intensity;
          poseStack.translate(0.0F, y * verticalIntensity, 0.0F);
-         poseStack.rotateDegrees(Axis.XP, (pitch * pitchIntensity));
+         poseStack.mulPose(Axis.XP.rotationDegrees(pitch * pitchIntensity));
       }
    }
 
@@ -224,10 +224,10 @@ public class HeldItemMotion {
             float kickPitch = Mth.lerp(partialTick, prevCrouchKickPitch, crouchKickPitch);
             float kickRoll = Mth.lerp(partialTick, prevCrouchKickRoll, crouchKickRoll);
             poseStack.translate(x, y, 0.0F);
-            poseStack.rotateDegrees(Axis.XP, pitch);
-            poseStack.rotateDegrees(Axis.ZP, roll);
-            poseStack.rotateDegrees(Axis.XP, kickPitch);
-            poseStack.rotateDegrees(Axis.ZP, kickRoll);
+            poseStack.mulPose(Axis.XP.rotationDegrees(pitch));
+            poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
+            poseStack.mulPose(Axis.XP.rotationDegrees(kickPitch));
+            poseStack.mulPose(Axis.ZP.rotationDegrees(kickRoll));
          }
       }
    }

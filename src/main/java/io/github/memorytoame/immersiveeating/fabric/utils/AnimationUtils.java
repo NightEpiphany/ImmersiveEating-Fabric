@@ -5,12 +5,12 @@ import io.github.memorytoame.immersiveeating.fabric.client.ClientSoundHandler;
 import io.github.memorytoame.immersiveeating.fabric.client.animation.AnimationResourceChecker;
 import io.github.memorytoame.immersiveeating.fabric.client.animation.CameraRotationComposer;
 import io.github.memorytoame.immersiveeating.fabric.client.animation.ClientAnimationManager;
+import io.github.memorytoame.immersiveeating.fabric.client.mixin.accessor.ItemInHandRendererAccessor;
 import io.github.memorytoame.immersiveeating.fabric.client.network.ClientNetwork;
 import io.github.memorytoame.immersiveeating.fabric.common.content.definition.FoodDefinitionManager;
 import io.github.memorytoame.immersiveeating.fabric.common.content.item.Empty;
 import java.util.UUID;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.state.level.FirstPersonHandsAndItemsRenderState;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 
@@ -203,10 +203,10 @@ public class AnimationUtils {
             Empty.triggerClientAnimation(stack, "switchin");
          }
 
-         FirstPersonHandsAndItemsRenderState renderer = mc.gameRenderer.gameRenderState().levelRenderState.playerRenderState.firstPersonHandsAndItems;
+         ItemInHandRendererAccessor itemInHandRenderer = (ItemInHandRendererAccessor) mc.gameRenderer.itemInHandRenderer;
          ItemStack fakeStack = stack.copy();
          fakeStack.setCount(stack.getCount() + 1);
-         renderer.mainHandItem = fakeStack;
+         itemInHandRenderer.setMainHandItem(fakeStack);
          customUseReequipHandled = true;
       }
    }

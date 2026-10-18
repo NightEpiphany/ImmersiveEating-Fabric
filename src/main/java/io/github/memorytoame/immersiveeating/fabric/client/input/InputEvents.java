@@ -76,7 +76,7 @@ public final class InputEvents {
 
       if (mc.options.keyAttack.consumeClick()) {
          AnimationUtils.stopAnimationControl();
-         mc.player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
+         mc.player.swing(InteractionHand.MAIN_HAND, false);
       }
    }
 

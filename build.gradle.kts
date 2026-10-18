@@ -54,7 +54,7 @@ dependencies {
 	testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.2")
 	// Punchy
-	compileOnly("maven.modrinth:8aoMKplv:ZTKLyIXH")
+	compileOnly("maven.modrinth:8aoMKplv:O6KuUYUk")
 }
 
 tasks.test {
