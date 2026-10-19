@@ -1,6 +1,6 @@
 {
   "item": "kaleidoscope_cookery:stargazy_pie",
-  "invisible": ["thick,rightArm"],
+  "invisible": [],
   "sounds": {
   }
 }
