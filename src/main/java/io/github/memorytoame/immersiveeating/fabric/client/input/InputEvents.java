@@ -90,6 +90,13 @@ public final class InputEvents {
          startKeyboardAnimation(mc);
       }
 
+      // 默认解除动画锁定状态，作为兜底
+      if (AnimationUtils.isInputLocked()
+              && (mc.gui.screen() == null || isAnimationGui(mc.gui.screen()))
+              && mc.options.getCameraType().isFirstPerson()) {
+         AnimationUtils.checkEatAnimationState();
+      }
+
       if (AnimationUtils.isInputLocked()) {
          return;
       }
