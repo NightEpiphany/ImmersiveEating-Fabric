@@ -43,7 +43,7 @@ public abstract class CameraMixin {
          return;
       }
 
-      boolean animationPlaying = Empty.isEatAnimationPlaying();
+      boolean animationPlaying = Empty.isAnimationPlaying();
       if (!animationPlaying) {
          CameraRotationComposer.clearBlockbenchRotation();
       }
