@@ -92,6 +92,13 @@ public class Empty extends Item implements GeoItem {
       return isClientAnimationPlaying(clientAnimationStackSupplier.get(), "eat");
    }
 
+   public static boolean isAnimationPlaying() {
+      ItemStack stack = clientAnimationStackSupplier.get();
+      return isClientAnimationPlaying(stack, "eat")
+         || isClientAnimationPlaying(stack, "switchin")
+         || isClientAnimationPlaying(stack, "switchout");
+   }
+
    public static boolean isClientAnimationPlaying(ItemStack stack, String controllerName) {
       if (stack != null && !stack.isEmpty()) {
          long instanceId = resolveControllerId(stack);

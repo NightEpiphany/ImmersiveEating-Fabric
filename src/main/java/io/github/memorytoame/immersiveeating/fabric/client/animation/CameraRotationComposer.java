@@ -7,6 +7,7 @@ import net.minecraft.client.Camera;
 import net.minecraft.util.Mth;
 import org.joml.Matrix3f;
 import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 @Environment(EnvType.CLIENT)
 public final class CameraRotationComposer {
@@ -53,11 +54,28 @@ public final class CameraRotationComposer {
     */
    public static void applyCameraEffects(
       Camera camera,
+      boolean preserveExistingRotation,
       boolean applyBlockbench,
       float pitchDegrees,
       float yawDegrees,
       float rollDegrees
    ) {
+      if (preserveExistingRotation) {
+         Quaternionf baseViewRotation = BASE_VIEW_ROTATION.set(camera.rotation());
+         if (applyBlockbench && hasBlockbenchRotation) {
+            applyLocalCameraRotation(
+               baseViewRotation,
+               blockbenchX * RAD_TO_DEG,
+               blockbenchY * RAD_TO_DEG,
+               blockbenchZ * RAD_TO_DEG
+            );
+         }
+
+         applyLocalCameraRotation(baseViewRotation, -pitchDegrees, -yawDegrees, -rollDegrees);
+         writeCameraQuaternion(camera, baseViewRotation);
+         return;
+      }
+
       float vanillaYaw = camera.yRot();
       Quaternionf baseViewRotation = BASE_VIEW_ROTATION
          .rotationZ(0.0F)
@@ -119,18 +137,24 @@ public final class CameraRotationComposer {
          accessor.food$setRotation(yaw, pitch);
       }
 
-      Quaternionf cameraRotation = camera.rotation();
-      cameraRotation.rotationYXZ(
+      Quaternionf cameraRotation = camera.rotation().rotationYXZ(
          (float)Math.PI - yaw * DEG_TO_RAD,
          -pitch * DEG_TO_RAD,
          -roll * DEG_TO_RAD
       );
 
-      // Camera#setRotation also refreshes these vectors. We update them here
-      // because Fabric applies the event equivalent after vanilla setup.
-      ((org.joml.Vector3f)camera.forwardVector()).set(0.0F, 0.0F, -1.0F).rotate(cameraRotation);
-      ((org.joml.Vector3f)camera.upVector()).set(0.0F, 1.0F, 0.0F).rotate(cameraRotation);
-      ((org.joml.Vector3f)camera.leftVector()).set(-1.0F, 0.0F, 0.0F).rotate(cameraRotation);
+      updateCameraDirectionVectors(camera, cameraRotation);
+   }
+
+   private static void writeCameraQuaternion(Camera camera, Quaternionf rotation) {
+      Quaternionf cameraRotation = camera.rotation().set(rotation);
+      updateCameraDirectionVectors(camera, cameraRotation);
+   }
+
+   private static void updateCameraDirectionVectors(Camera camera, Quaternionf cameraRotation) {
+      ((Vector3f)camera.forwardVector()).set(0.0F, 0.0F, -1.0F).rotate(cameraRotation);
+      ((Vector3f)camera.upVector()).set(0.0F, 1.0F, 0.0F).rotate(cameraRotation);
+      ((Vector3f)camera.leftVector()).set(-1.0F, 0.0F, 0.0F).rotate(cameraRotation);
    }
 
    private static void extractCameraAngles(Quaternionf finalViewRotation, float fallbackYaw) {
