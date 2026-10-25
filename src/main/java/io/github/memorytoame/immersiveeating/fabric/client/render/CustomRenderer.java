@@ -211,7 +211,11 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
    }
 
    private boolean shouldHideInvisibleBone(float partialTick) {
-      return !(AnimationUtils.isAnimationLocked() && Empty.isEatAnimationPlaying());
+      Minecraft minecraft = Minecraft.getInstance();
+      boolean armSwinging = minecraft.player != null
+         && minecraft.player.getAttackAnim(partialTick) > 1.0E-4F;
+      boolean eatAnimationPlaying = AnimationUtils.isAnimationLocked() && Empty.isEatAnimationPlaying();
+      return armSwinging || !eatAnimationPlaying;
    }
 
    private boolean isInvisibleBone(GeoBone bone) {

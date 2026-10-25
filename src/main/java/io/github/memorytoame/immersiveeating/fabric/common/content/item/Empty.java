@@ -44,6 +44,7 @@ public class Empty extends Item implements GeoItem {
       GeoItem.registerSyncedAnimatable(this);
    }
 
+   @SuppressWarnings("unused")
    public static void setClientHooks(
       Consumer<ItemStack> useReequipHandler,
       Runnable cameraShakeHandler,
@@ -61,6 +62,16 @@ public class Empty extends Item implements GeoItem {
       clientGetMainHandItem = mainHandItem;
       clientAnimationSessionSupplier = animationSessionSupplier;
       clientAnimationControllerSupplier = animationControllerSupplier;
+   }
+
+   public static boolean isAnimationPlaying() {
+      return isClientAnimationPlaying(clientAnimationStackSupplier.get(), "eat")||
+              isClientAnimationPlaying(clientAnimationStackSupplier.get(), "switchin")||
+              isClientAnimationPlaying(clientAnimationStackSupplier.get(), "switchout");
+   }
+
+   public static boolean isEatAnimationPlaying() {
+      return isClientAnimationPlaying(clientAnimationStackSupplier.get(), "eat");
    }
 
    public static void setClientSoundHooks(Consumer<Identifier> soundHandler, Runnable soundStopHandler) {
@@ -86,10 +97,6 @@ public class Empty extends Item implements GeoItem {
       if (controller != null) {
          controller.stopTriggeredAnimation();
       }
-   }
-
-   public static boolean isEatAnimationPlaying() {
-      return isClientAnimationPlaying(clientAnimationStackSupplier.get(), "eat");
    }
 
    public static boolean isClientAnimationPlaying(ItemStack stack, String controllerName) {
