@@ -166,7 +166,7 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
       boolean firstPerson = transformType == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND
          || transformType == ItemDisplayContext.FIRST_PERSON_LEFT_HAND;
       this.mirrorLeftHandModel = transformType == ItemDisplayContext.FIRST_PERSON_LEFT_HAND;
-      this.capturingCameraRotation = firstPerson && AnimationUtils.isAnimationLocked();
+      this.capturingCameraRotation = firstPerson && Empty.isAnimationPlaying();
 
       if (firstPerson) {
          CameraRotationComposer.clearBlockbenchRotation();
