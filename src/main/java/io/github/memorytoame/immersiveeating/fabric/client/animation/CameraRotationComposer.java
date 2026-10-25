@@ -12,6 +12,7 @@ import org.joml.Quaternionf;
 public final class CameraRotationComposer {
    private static final float DEG_TO_RAD = (float)(Math.PI / 180.0);
    private static final float RAD_TO_DEG = (float)(180.0 / Math.PI);
+   private static final float CAMERA_SHAKE_EPSILON = 1.0E-4F;
    private static final float GIMBAL_LOCK_EPSILON = 0.001745F;
    private static final float MAX_CAMERA_PITCH_RADIANS = 1.569051F;
    private static final Quaternionf BASE_VIEW_ROTATION = new Quaternionf();
@@ -58,6 +59,14 @@ public final class CameraRotationComposer {
       float yawDegrees,
       float rollDegrees
    ) {
+      boolean hasBlockbenchRotation = applyBlockbench && CameraRotationComposer.hasBlockbenchRotation;
+      boolean hasCameraShake = Math.abs(pitchDegrees) >= CAMERA_SHAKE_EPSILON
+         || Math.abs(yawDegrees) >= CAMERA_SHAKE_EPSILON
+         || Math.abs(rollDegrees) >= CAMERA_SHAKE_EPSILON;
+      if (!hasBlockbenchRotation && !hasCameraShake) {
+         return;
+      }
+
       float vanillaYaw = camera.getYRot();
       Quaternionf baseViewRotation = BASE_VIEW_ROTATION
          .rotationZ(0.0F)
@@ -65,7 +74,7 @@ public final class CameraRotationComposer {
          .rotateY((vanillaYaw + 180.0F) * DEG_TO_RAD);
       float fallbackYaw = vanillaYaw;
 
-      if (applyBlockbench && hasBlockbenchRotation) {
+      if (hasBlockbenchRotation) {
          applyLocalCameraRotation(
             baseViewRotation,
             blockbenchX * RAD_TO_DEG,
@@ -80,7 +89,9 @@ public final class CameraRotationComposer {
             .rotateY((extractedYawDegrees + 180.0F) * DEG_TO_RAD);
       }
 
-      applyLocalCameraRotation(baseViewRotation, -pitchDegrees, -yawDegrees, -rollDegrees);
+      if (hasCameraShake) {
+         applyLocalCameraRotation(baseViewRotation, -pitchDegrees, -yawDegrees, -rollDegrees);
+      }
       writeCameraRotation(camera, baseViewRotation, fallbackYaw);
    }
 

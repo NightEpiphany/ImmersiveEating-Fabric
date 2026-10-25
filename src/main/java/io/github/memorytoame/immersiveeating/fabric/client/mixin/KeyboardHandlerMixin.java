@@ -1,5 +1,6 @@
 package io.github.memorytoame.immersiveeating.fabric.client.mixin;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import io.github.memorytoame.immersiveeating.fabric.utils.AnimationUtils;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -26,10 +27,18 @@ public class KeyboardHandlerMixin {
    private static boolean food$isAllowedDuringAnimation(int key, int scanCode) {
       Options options = Minecraft.getInstance().options;
       return options.keyAttack.matches(key, scanCode)
+         || key == InputConstants.KEY_ESCAPE
+         || options.keySprint.matches(key, scanCode)
+         || options.keyScreenshot.matches(key, scanCode)
+         || options.keyAdvancements.matches(key, scanCode)
+         || options.keyTogglePerspective.matches(key, scanCode)
          || options.keyUp.matches(key, scanCode)
          || options.keyDown.matches(key, scanCode)
          || options.keyLeft.matches(key, scanCode)
          || options.keyRight.matches(key, scanCode)
+         || options.keyFullscreen.matches(key, scanCode)
+         || options.keyChat.matches(key, scanCode)
+         || options.keyInventory.matches(key, scanCode)
          || options.keyJump.matches(key, scanCode);
    }
 }

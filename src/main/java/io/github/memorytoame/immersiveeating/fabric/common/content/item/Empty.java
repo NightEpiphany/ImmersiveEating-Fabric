@@ -42,6 +42,7 @@ public class Empty extends Item implements GeoItem {
       GeoItem.registerSyncedAnimatable(this);
    }
 
+   @SuppressWarnings("unused")
    public static void setClientHooks(
       Consumer<ItemStack> useReequipHandler,
       Runnable cameraShakeHandler,
@@ -184,6 +185,12 @@ public class Empty extends Item implements GeoItem {
          });
          controllers.add(controller);
       }
+   }
+
+   public static boolean isAnimationPlaying() {
+      return isClientAnimationPlaying(clientAnimationStackSupplier.get(), "eat")||
+              isClientAnimationPlaying(clientAnimationStackSupplier.get(), "switchin")||
+              isClientAnimationPlaying(clientAnimationStackSupplier.get(), "switchout");
    }
 
    private AnimationController<Empty> createControl(String name) {

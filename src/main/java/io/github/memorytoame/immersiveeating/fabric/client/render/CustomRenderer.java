@@ -43,7 +43,6 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
    public static Map<String, CustomRenderer> rendererMap = new HashMap<>(32);
    private final List<VanillaArmRenderer.CapturedArm> capturedArms = new ArrayList<>(8);
    private final String itemId;
-   private boolean capturingCameraRotation;
    private boolean mirrorLeftHandModel;
 
    public CustomRenderer(String id) {
@@ -73,7 +72,7 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
       boolean cameraBone = "camera".equals(bone.getName());
       boolean armBone = VanillaArmRenderer.isArmBone(bone);
       boolean moveBoneBehindCamera = !this.hasInvisibleBoneParent(bone) && this.isInvisibleBone(bone) && this.shouldHideInvisibleBone(partialTick);
-      if (this.capturingCameraRotation && cameraBone) {
+      if (cameraBone) {
          CameraRotationComposer.captureBlockbenchRotationRadians(bone.getRotX(), bone.getRotY(), bone.getRotZ());
       }
 
@@ -100,6 +99,7 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
       poseStack.popPose();
    }
 
+   @Override
    public void renderByItem(
       ItemStack stack, ItemDisplayContext transformType, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, int packedOverlay
    ) {
@@ -114,7 +114,6 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
       boolean firstPerson = transformType == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND || transformType == ItemDisplayContext.FIRST_PERSON_LEFT_HAND;
       this.mirrorLeftHandModel = transformType == ItemDisplayContext.FIRST_PERSON_LEFT_HAND;
       boolean mirroredRender = this.mirrorLeftHandModel;
-      this.capturingCameraRotation = firstPerson && AnimationUtils.isAnimationLocked();
       if (firstPerson) {
          CameraRotationComposer.clearBlockbenchRotation();
       }
@@ -122,7 +121,6 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
       try {
          super.renderByItem(stack, transformType, poseStack, bufferSource, packedLight, packedOverlay);
       } finally {
-         this.capturingCameraRotation = false;
          this.mirrorLeftHandModel = false;
       }
 
@@ -131,6 +129,7 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
       this.capturedArms.clear();
    }
 
+   @Override
    public void renderCube(PoseStack poseStack, GeoCube cube, VertexConsumer buffer, int packedLight, int packedOverlay, int colour) {
       RenderUtil.translateToPivotPoint(poseStack, cube);
       RenderUtil.rotateMatrixAroundCube(poseStack, cube);
@@ -165,6 +164,7 @@ public class CustomRenderer extends GeoItemRenderer<Empty> {
       );
    }
 
+   @Override
    public RenderType getRenderType(Empty animatable, ResourceLocation texture, @Nullable MultiBufferSource bufferSource, float partialTick) {
       return RenderType.entityTranslucentCull(texture);
    }

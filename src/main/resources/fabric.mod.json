@@ -31,10 +31,10 @@
 		"java": ">=21",
 		"fabric-api": "*",
 		"geckolib": ">=4.9",
-		"forgeconfigapiport": ">=21.1.6",
-		"kaleidoscope_cookery": ">=1.6.0"
+		"forgeconfigapiport": ">=21.1.6"
 	},
 	"suggests": {
-		"kaleidoscope_tavern": "*"
+		"kaleidoscope_tavern": "*",
+		"kaleidoscope_cookery": ">=1.6.0"
 	}
 }
