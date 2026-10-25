@@ -17,6 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Environment(EnvType.CLIENT)
 @Mixin(Camera.class)
 public abstract class CameraMixin {
+   @SuppressWarnings("DiscouragedShift")
    @Inject(
       method = "setup",
       at = @At(
@@ -39,7 +40,7 @@ public abstract class CameraMixin {
          return;
       }
 
-      boolean animationPlaying = Empty.isEatAnimationPlaying();
+      boolean animationPlaying = Empty.isAnimationPlaying();
       if (!animationPlaying) {
          CameraRotationComposer.clearBlockbenchRotation();
       }

@@ -68,6 +68,10 @@ tasks.processResources {
 	}
 }
 
+tasks.test {
+	useJUnitPlatform()
+}
+
 tasks.withType<JavaCompile>().configureEach {
 	options.release = 21
 }

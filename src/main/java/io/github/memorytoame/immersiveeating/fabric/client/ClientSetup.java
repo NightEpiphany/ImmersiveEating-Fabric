@@ -1,6 +1,7 @@
 package io.github.memorytoame.immersiveeating.fabric.client;
 
 import io.github.memorytoame.immersiveeating.fabric.client.animation.CameraShake;
+import io.github.memorytoame.immersiveeating.fabric.client.animation.ClientAnimationManager;
 import io.github.memorytoame.immersiveeating.fabric.client.config.ClientConfig;
 import io.github.memorytoame.immersiveeating.fabric.client.events.ClientReloadEvents;
 import io.github.memorytoame.immersiveeating.fabric.client.events.FirstPersonModEvents;
@@ -36,10 +37,9 @@ public final class ClientSetup {
          AnimationUtils::finishAnimationSession,
          () -> Minecraft.getInstance().player == null ? Items.AIR : Minecraft.getInstance().player.getMainHandItem().getItem(),
          () -> AnimationUtils.getAnimationSessionId(Minecraft.getInstance()),
-         () -> {
-            AnimationUtils.refreshAnimationControllerId(Minecraft.getInstance());
-            return AnimationUtils.getAnimationControllerId(Minecraft.getInstance());
-         }
+         () -> Minecraft.getInstance().player == null
+            ? Long.MAX_VALUE
+            : ClientAnimationManager.getOrCreateControllerId(Minecraft.getInstance().player)
       );
       Empty.setClientSoundHooks(ClientSoundHandler::playLocal, ClientSoundHandler::stopLocalSounds);
       Empty.setClientNetworkHooks(

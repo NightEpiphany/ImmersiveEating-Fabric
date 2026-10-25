@@ -83,7 +83,7 @@ public class ItemRendererMixin {
                   proxy.getOrCreateTag().putLong(GeoItem.ID_NBT_KEY, instanceId);
                }
 
-               customRenderer.renderByItem(proxy, context, poseStack, buffer, light, overlay);
+               customRenderer.renderByItem(proxy, context, poseStack, buffer, light, overlay, instanceId);
                poseStack.popPose();
                ci.cancel();
             }

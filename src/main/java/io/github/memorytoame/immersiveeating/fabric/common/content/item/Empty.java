@@ -5,7 +5,9 @@ import io.github.memorytoame.immersiveeating.fabric.client.render.CustomRenderer
 import io.github.memorytoame.immersiveeating.fabric.init.ModItems;
 import io.github.memorytoame.immersiveeating.fabric.unique.UniqueItem;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -27,6 +29,7 @@ public class Empty extends Item implements GeoItem {
    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
    private final Supplier<Object> renderProvider = GeoItem.makeRenderer(this);
    private static Consumer<ItemStack> clientUseReequipHandler = ignored -> {};
+   private static Runnable clientCameraShakeHandler = () -> {};
    private static Supplier<ItemStack> clientAnimationStackSupplier = () -> ItemStack.EMPTY;
    private static Runnable clientAnimationStackClearHandler = () -> {};
    private static Runnable clientHotbarUnlockHandler = () -> {};
@@ -37,6 +40,7 @@ public class Empty extends Item implements GeoItem {
    private static Runnable clientSoundStopHandler = () -> {};
    private static BiConsumer<InteractionHand, Item> clientCustomUseHandler = (ignoredHand, ignoredItem) -> {};
    private static BiConsumer<InteractionHand, UUID> clientFinishUseHandler = (ignoredHand, ignoredSession) -> {};
+   private static final Map<String, ClientAnimationContext> clientAnimationStacks = new HashMap<>(3);
    private final List<AnimationController<Empty>> reg_controllers = new ArrayList<>(3);
 
    public Empty(Properties pProperties) {
@@ -44,6 +48,7 @@ public class Empty extends Item implements GeoItem {
       GeoItem.registerSyncedAnimatable(this);
    }
 
+   @SuppressWarnings("unused")
    public static void setClientHooks(
       Consumer<ItemStack> useReequipHandler,
       Runnable cameraShakeHandler,
@@ -55,6 +60,7 @@ public class Empty extends Item implements GeoItem {
       Supplier<Long> animationControllerSupplier
    ) {
       clientUseReequipHandler = useReequipHandler;
+      clientCameraShakeHandler = cameraShakeHandler;
       clientAnimationStackSupplier = animationStackSupplier;
       clientAnimationStackClearHandler = animationStackClearHandler;
       clientHotbarUnlockHandler = hotbarUnlockHandler;
@@ -86,21 +92,27 @@ public class Empty extends Item implements GeoItem {
       if (controller != null) {
          controller.stop();
       }
+      clientAnimationStacks.remove("eat");
    }
 
    public static boolean isEatAnimationPlaying() {
       return isClientAnimationPlaying(clientAnimationStackSupplier.get(), "eat");
    }
 
+   public static boolean isAnimationPlaying() {
+      return isClientAnimationPlaying(clientAnimationStackSupplier.get(), "eat")
+         || isStoredAnimationPlaying("switchin")
+         || isStoredAnimationPlaying("switchout");
+   }
+
    public static boolean isClientAnimationPlaying(ItemStack stack, String controllerName) {
       if (stack != null && !stack.isEmpty()) {
-         long instanceId = resolveControllerId(stack);
-         Empty empty = ModItems.EMPTY;
-         AnimationController<?> controller = empty.getAnimatableInstanceCache()
-            .getManagerForId(instanceId)
-            .getAnimationControllers()
-            .get(controllerName);
-         return controller != null && controller.isPlayingTriggeredAnimation();
+         ClientAnimationContext context = clientAnimationStacks.get(controllerName);
+         if (context != null && ItemStack.isSameItemSameTags(context.stack(), stack)) {
+            return isControllerPlaying(context.instanceId(), controllerName);
+         }
+
+         return isControllerPlaying(resolveControllerId(stack), controllerName);
       } else {
          return false;
       }
@@ -116,6 +128,7 @@ public class Empty extends Item implements GeoItem {
          if (controller != null) {
             controller.stop();
          }
+         clientAnimationStacks.remove(controllerName);
       }
    }
 
@@ -130,7 +143,9 @@ public class Empty extends Item implements GeoItem {
          if (controller != null) {
             clientSoundStopHandler.run();
             controller.forceAnimationReset();
-            controller.tryTriggerAnimation(controllerName);
+            if (controller.tryTriggerAnimation(controllerName)) {
+               clientAnimationStacks.put(controllerName, new ClientAnimationContext(stack.copy(), instanceId));
+            }
          }
       }
    }
@@ -144,7 +159,9 @@ public class Empty extends Item implements GeoItem {
       for (AnimationController<Empty> controller : this.reg_controllers) {
          controller.setSoundKeyframeHandler(
             keyFrames -> {
-               ItemStack animationStack = clientAnimationStackSupplier.get();
+               String controllerName = keyFrames.getController().getName();
+               ClientAnimationContext context = clientAnimationStacks.get(controllerName);
+               ItemStack animationStack = context == null ? clientAnimationStackSupplier.get() : context.stack();
                if (animationStack != null && !animationStack.isEmpty()) {
                   ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(animationStack.getItem());
                   String soundKey = keyFrames.getKeyframeData().getSound();
@@ -152,11 +169,16 @@ public class Empty extends Item implements GeoItem {
                      clientSoundHandler.accept(new ResourceLocation("minecraft", "entity.item.pickup"));
                   }
 
+                  clientCameraShakeHandler.run();
                   ResourceLocation soundId = FoodDefinitionManager.getSound(itemId.toString(), soundKey);
-                  if (soundId != null && clientGetMainHandItem.get() != null) {
-                     if (UniqueItem.UNIQUE_ITEM_MAP.get(BuiltInRegistries.ITEM.getKey(clientGetMainHandItem.get())) != null) {
+                  if (soundId != null) {
+                     Item mainHandItem = clientGetMainHandItem.get();
+                     ResourceLocation mainHandId = mainHandItem == null ? null : BuiltInRegistries.ITEM.getKey(mainHandItem);
+                     if ("eat".equals(controllerName)
+                        && mainHandId != null
+                        && UniqueItem.UNIQUE_ITEM_MAP.get(mainHandId) != null) {
                         Item child_item = BuiltInRegistries.ITEM
-                           .get(UniqueItem.UNIQUE_ITEM_MAP.get(BuiltInRegistries.ITEM.getKey(clientGetMainHandItem.get())));
+                           .get(UniqueItem.UNIQUE_ITEM_MAP.get(mainHandId));
                         if (child_item != null) {
                            clientCustomUseHandler.accept(InteractionHand.MAIN_HAND, child_item);
                         }
@@ -169,8 +191,10 @@ public class Empty extends Item implements GeoItem {
          );
          controller.setCustomInstructionKeyframeHandler(keyFrames -> {
             if (keyFrames.getKeyframeData().getInstructions().contains("finished")) {
-               ItemStack animationStack = clientAnimationStackSupplier.get();
+               ClientAnimationContext context = clientAnimationStacks.get(controller.getName());
+               ItemStack animationStack = context == null ? clientAnimationStackSupplier.get() : context.stack();
                controller.stop();
+               clientAnimationStacks.remove(controller.getName());
                if (animationStack != null && !animationStack.isEmpty()) {
                   clientAnimationStackClearHandler.run();
                   UUID sessionId = clientAnimationSessionSupplier.get();
@@ -203,6 +227,27 @@ public class Empty extends Item implements GeoItem {
       return controller.triggerableAnim(name, RawAnimation.begin().thenPlay(name));
    }
 
+   private static boolean isStoredAnimationPlaying(String controllerName) {
+      ClientAnimationContext context = clientAnimationStacks.get(controllerName);
+      if (context == null || context.stack().isEmpty()) {
+         return false;
+      }
+
+      boolean playing = isControllerPlaying(context.instanceId(), controllerName);
+      if (!playing) {
+         clientAnimationStacks.remove(controllerName);
+      }
+      return playing;
+   }
+
+   private static boolean isControllerPlaying(long instanceId, String controllerName) {
+      AnimationController<?> controller = ModItems.EMPTY.getAnimatableInstanceCache()
+         .getManagerForId(instanceId)
+         .getAnimationControllers()
+         .get(controllerName);
+      return controller != null && controller.isPlayingTriggeredAnimation();
+   }
+
    private static long resolveControllerId(ItemStack stack) {
       long stackId = stack != null && !stack.isEmpty() ? GeoItem.getId(stack) : Long.MAX_VALUE;
       return stackId == Long.MAX_VALUE ? clientAnimationControllerSupplier.get() : stackId;
@@ -214,6 +259,9 @@ public class Empty extends Item implements GeoItem {
 
    public double getBoneResetTime() {
       return 0.0;
+   }
+
+   private record ClientAnimationContext(ItemStack stack, long instanceId) {
    }
 }
 

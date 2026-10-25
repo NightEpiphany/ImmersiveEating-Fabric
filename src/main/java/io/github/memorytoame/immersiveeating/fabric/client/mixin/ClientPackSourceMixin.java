@@ -28,7 +28,7 @@ public class ClientPackSourceMixin {
          ignored -> Pack.readMetaAndCreate(
             "food_dynamic",
             Component.literal("Kaleidoscope ImmersiveEating Resources"),
-            false,
+            true,
             resources,
             PackType.CLIENT_RESOURCES,
             Pack.Position.TOP,
