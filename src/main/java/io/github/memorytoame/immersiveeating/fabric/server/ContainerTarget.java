@@ -11,6 +11,8 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.function.Predicate;
 
+import static io.github.memorytoame.immersiveeating.fabric.init.ModTags.ALLOW_INTERACTIONS;
+
 public final class ContainerTarget {
     private static final Predicate<BlockState> BLOCK_WHITELIST = state -> state.is(Blocks.CAKE) || state.is(BlockTags.BEDS) || state.is(BlockTags.DOORS);
 
@@ -23,6 +25,6 @@ public final class ContainerTarget {
     }
 
     public static boolean allowsInteraction(Entity entity) {
-        return entity instanceof ItemFrame;
+        return entity.getType().is(ALLOW_INTERACTIONS);
     }
 }
