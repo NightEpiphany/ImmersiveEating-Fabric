@@ -1,4 +1,5 @@
 {
+  "tooltip.food.eating_animation": "HasAnimation",
   "modmenu.nameTranslation.food": "Kaleidoscope Immersive Eating",
   "modmenu.descriptionTranslation.food": "Brings brand-new eating animations and an immersive experience to Kaleidoscope Cookery.",
   "tab.food": "food",

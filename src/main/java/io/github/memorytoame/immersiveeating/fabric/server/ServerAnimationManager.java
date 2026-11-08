@@ -6,7 +6,6 @@ import java.util.UUID;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.animatable.GeoItem;
 
 public final class ServerAnimationManager {
    private static final Map<UUID, ServerAnimationManager.AnimationState> ACTIVE_ANIMATIONS = new HashMap<>(16);
@@ -18,22 +17,17 @@ public final class ServerAnimationManager {
       return player == null ? null : ACTIVE_ANIMATIONS.get(player.getUUID());
    }
 
-   public static boolean begin(ServerPlayer player, UUID sessionId, InteractionHand hand, ItemStack stack, long controllerId) {
+   public static boolean begin(ServerPlayer player, UUID sessionId, InteractionHand hand, ItemStack stack) {
       if (player == null
          || sessionId == null
          || hand == null
          || stack == null
-         || stack.isEmpty()
-         || controllerId == Long.MAX_VALUE
-         || GeoItem.getId(stack) != controllerId) {
+         || stack.isEmpty()) {
          return false;
       }
 
-      if (ACTIVE_ANIMATIONS.containsKey(player.getUUID())) {
-         return false;
-      }
-
-      ACTIVE_ANIMATIONS.put(player.getUUID(), new ServerAnimationManager.AnimationState(player.getUUID(), sessionId, hand, stack.copy(), controllerId));
+      // A fresh request supersedes an abandoned session; finish and stop still require its UUID.
+      ACTIVE_ANIMATIONS.put(player.getUUID(), new ServerAnimationManager.AnimationState(player.getUUID(), sessionId, hand, stack.copy()));
       return true;
    }
 
@@ -56,8 +50,7 @@ public final class ServerAnimationManager {
       ItemStack expectedStack = state.stack();
       return !heldStack.isEmpty()
          && ItemStack.isSameItemSameComponents(heldStack, expectedStack)
-         && heldStack.getCount() == expectedStack.getCount()
-         && GeoItem.getId(heldStack) == state.controllerId();
+         && heldStack.getCount() == expectedStack.getCount();
    }
 
    public static void clear(ServerPlayer player) {
@@ -76,7 +69,7 @@ public final class ServerAnimationManager {
       ACTIVE_ANIMATIONS.clear();
    }
 
-   public record AnimationState(UUID ownerId, UUID sessionId, InteractionHand hand, ItemStack stack, long controllerId) {
+   public record AnimationState(UUID ownerId, UUID sessionId, InteractionHand hand, ItemStack stack) {
    }
 }
 

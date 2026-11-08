@@ -30,34 +30,38 @@ public final class InputEvents {
    }
 
    public static void register() {
+      GameplayEvents.register();
       ClientTickEvents.START_CLIENT_TICK.register(InputEvents::onClientTickStart);
       ClientTickEvents.END_CLIENT_TICK.register(InputEvents::onClientTick);
    }
 
 
    public static boolean handleRightClick(Minecraft mc) {
-      if (AnimationUtils.isInputLocked()) {
-         return true;
-      }
-
       if (mc == null || !mc.options.keyUse.isDown()) {
          rightClickHandled = false;
       }
 
-      if (mc == null || mc.player == null || !Config.ENABLE_RIGHT_BUTTON.get()
-         || mc.player.isCrouching() || isAnimationGui(mc.screen)) {
+      if (mc == null || mc.player == null || !mc.options.getCameraType().isFirstPerson()) {
          return false;
       }
 
+      AnimationUtils.cancelIfHeldItemChanged(mc);
       ItemStack stack = mc.player.getMainHandItem();
-      if (!FoodDefinitionManager.init_ItemList.contains(stack.getItem())
-         || Empty.isClientAnimationPlaying(stack, "switchin")) {
+      if (!FoodDefinitionManager.init_ItemList.contains(stack.getItem())) {
+         return false;
+      }
+
+      if (AnimationUtils.isInputLocked() || Empty.isAnimationPlaying()) {
+         return true;
+      }
+
+      if (!Config.ENABLE_RIGHT_BUTTON.get() || mc.player.isCrouching()
+         || isAnimationGui(mc.screen) || GameplayEvents.shouldAllowTargetInteraction(mc)) {
          return false;
       }
 
       if (!rightClickHandled) {
-         GameplayEvents.startRightClickAnimation(stack);
-         rightClickHandled = true;
+         rightClickHandled = GameplayEvents.startRightClickAnimation(stack);
       }
       return true;
    }
@@ -88,14 +92,6 @@ public final class InputEvents {
          startKeyboardAnimation(mc);
       }
 
-      if (AnimationUtils.isInputLocked()) {
-         return;
-      }
-
-      if (Food.DEBUG) {
-         updateDebugKeys(mc);
-      }
-
       AnimationUtils.updateCustomUseState(mc);
       if (!isAnimationGui(mc.screen)) {
          AnimationUtils.cancelIfHeldItemChanged(mc);
@@ -108,14 +104,19 @@ public final class InputEvents {
          } else {
             AnimationUtils.lockedHotbarSlot = -1;
          }
-      } else if (AnimationUtils.isAnimationLocked()) {
+      } else if (AnimationUtils.isInputLocked()) {
          AnimationUtils.stopAnimationControl();
       }
 
+      if (!AnimationUtils.isInputLocked() && Food.DEBUG) {
+         updateDebugKeys(mc);
+      }
    }
 
    private static void startKeyboardAnimation(Minecraft mc) {
-      if (AnimationUtils.isAnimationLocked() || AnimationUtils.isAnimationRequestPending() || mc.player == null) {
+      if (mc.player == null || !mc.options.getCameraType().isFirstPerson() || Empty.isAnimationPlaying()
+         || GameplayEvents.shouldAllowTargetInteraction(mc)
+         || AnimationUtils.isAnimationLocked() || AnimationUtils.isAnimationRequestPending()) {
          return;
       }
 
@@ -157,6 +158,6 @@ public final class InputEvents {
    }
 
    private static boolean isAnimationGui(Screen screen) {
-      return screen instanceof ChatScreen || screen instanceof AbstractContainerScreen;
+      return screen instanceof ChatScreen || screen instanceof AbstractContainerScreen<?>;
    }
 }

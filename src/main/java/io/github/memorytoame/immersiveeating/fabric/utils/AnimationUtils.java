@@ -46,7 +46,15 @@ public class AnimationUtils {
    }
 
    public static void updateSwitchInAnimation() {
-      if (!switchInStack.isEmpty() && !Empty.isClientAnimationPlaying(switchInStack, "switchin")) {
+      if (switchInStack.isEmpty()) {
+         return;
+      }
+
+      Minecraft mc = Minecraft.getInstance();
+      if (mc.player == null || !mc.options.getCameraType().isFirstPerson()) {
+         Empty.stopClientAnimation(switchInStack, "switchin");
+         switchInStack = ItemStack.EMPTY;
+      } else if (!Empty.isClientAnimationPlaying(switchInStack, "switchin")) {
          switchInStack = ItemStack.EMPTY;
       }
    }
@@ -77,39 +85,60 @@ public class AnimationUtils {
 
    public static void clearAnimationState() {
       stopAnimationControl();
+      resetCustomUseState();
       animationSessionId = null;
       animationControllerId = Long.MAX_VALUE;
       animationRequestPending = false;
       animationRequestTicks = 0;
    }
 
+   public static void onAnimationStatus(UUID sessionId, boolean accepted) {
+      if (!sessionId.equals(animationSessionId) || !isAnimationLocked()) {
+         return;
+      }
+
+      if (!accepted) {
+         stopAnimationControl();
+      } else if (animationRequestPending) {
+         Empty.triggerClientAnimation(temp, "eat");
+         animationRequestPending = false;
+         wasEatAnimationPlaying = true;
+      }
+   }
+
    public static void checkEatAnimationState() {
       refreshAnimationControllerId(Minecraft.getInstance());
-      if (animationRequestPending && ++animationRequestTicks > 40) {
-         stopAnimationControl();
-      } else {
-         boolean animationPlaying = Empty.isEatAnimationPlaying();
-         if (animationPlaying) {
-            wasEatAnimationPlaying = true;
-            animationRequestPending = false;
-         } else if (wasEatAnimationPlaying && isAnimationLocked()) {
+      if (animationRequestPending) {
+         if (++animationRequestTicks > 40) {
             stopAnimationControl();
          }
+         return;
+      }
+
+      boolean animationPlaying = Empty.isEatAnimationPlaying();
+      if (animationPlaying) {
+         wasEatAnimationPlaying = true;
+      } else if (wasEatAnimationPlaying && isAnimationLocked()) {
+         stopAnimationControl();
       }
    }
 
    public static void stopAnimationControl() {
-      if (isAnimationLocked() && animationSessionId != null) {
+      Minecraft mc = Minecraft.getInstance();
+      if (mc.getConnection() != null && isAnimationLocked() && animationSessionId != null) {
          ClientNetwork.sendStopAnimation(animationSessionId);
       }
 
-      Empty.stopEatAnimation(animationControllerId);
+      animationSessionId = null;
+      if (animationControllerId != Long.MAX_VALUE) {
+         Empty.stopEatAnimation(animationControllerId);
+      }
       if (!switchInStack.isEmpty()) {
          Empty.stopClientAnimation(switchInStack, "switchin");
       }
       ClientSoundHandler.stopLocalSounds();
-      if (Minecraft.getInstance().player != null) {
-         ClientAnimationManager.clearSession(Minecraft.getInstance().player);
+      if (mc.player != null) {
+         ClientAnimationManager.clearSession(mc.player);
       }
 
       temp = null;
@@ -188,6 +217,10 @@ public class AnimationUtils {
    }
 
    public static void playCustomUseReequipAnimation(Minecraft mc, ItemStack stack) {
+      if (mc.player == null || !mc.options.getCameraType().isFirstPerson()) {
+         return;
+      }
+
       if (stack != null && !stack.isEmpty()) {
          if (AnimationResourceChecker.hasAnimation(stack, "switchin")) {
             beginSwitchInAnimation(stack);

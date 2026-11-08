@@ -106,7 +106,8 @@ public abstract class ItemInHandRendererMixin {
    @Inject(method = "tick", at = @At("HEAD"))
    private void food$triggerSwitchOut(CallbackInfo ci) {
       Minecraft mc = Minecraft.getInstance();
-      if (mc.player == null) {
+      if (mc.player == null || !mc.options.getCameraType().isFirstPerson()) {
+         this.food$stopSwitchAnimations();
          this.food$resetTracking();
       } else {
          ItemStack mainHandItem = mc.player.getMainHandItem();
@@ -158,7 +159,8 @@ public abstract class ItemInHandRendererMixin {
 
    @Unique
    private static boolean food$trigger(ItemStack stack, String controllerName) {
-      if (!stack.isEmpty() && FoodDefinitionManager.init_ItemList.contains(stack.getItem()) && food$hasAnimation(stack, controllerName)) {
+      if (Minecraft.getInstance().options.getCameraType().isFirstPerson()
+         && !stack.isEmpty() && FoodDefinitionManager.init_ItemList.contains(stack.getItem()) && food$hasAnimation(stack, controllerName)) {
          if ("switchin".equals(controllerName)) {
             AnimationUtils.beginSwitchInAnimation(stack);
          }
@@ -191,6 +193,17 @@ public abstract class ItemInHandRendererMixin {
             return false;
          }
       }).orElse(false);
+   }
+
+   @Unique
+   private void food$stopSwitchAnimations() {
+      if (!this.food$renderedMainHandItem.isEmpty()
+         && FoodDefinitionManager.init_ItemList.contains(this.food$renderedMainHandItem.getItem())) {
+         Empty.stopClientAnimation(this.food$renderedMainHandItem, "switchin");
+      }
+      if (!this.food$switchOutItem.isEmpty()) {
+         Empty.stopClientAnimation(this.food$switchOutItem, "switchout");
+      }
    }
 
    @Unique

@@ -2,6 +2,7 @@ package io.github.memorytoame.immersiveeating.fabric.network;
 
 import io.github.memorytoame.immersiveeating.fabric.init.ModItems;
 import io.github.memorytoame.immersiveeating.fabric.network.packet.AnimationPacket;
+import io.github.memorytoame.immersiveeating.fabric.network.packet.AnimationStatusPacket;
 import io.github.memorytoame.immersiveeating.fabric.network.packet.CustomUsingPacket;
 import io.github.memorytoame.immersiveeating.fabric.network.packet.FinishUsePacket;
 import io.github.memorytoame.immersiveeating.fabric.network.packet.StopAnimationPacket;
@@ -20,9 +21,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import software.bernie.geckolib.animatable.GeoAnimatable;
-import software.bernie.geckolib.animatable.GeoItem;
-import software.bernie.geckolib.animation.AnimationController;
 
 public final class Network {
    private static boolean registered;
@@ -39,6 +37,7 @@ public final class Network {
       PayloadTypeRegistry.playC2S().register(FinishUsePacket.TYPE, FinishUsePacket.STREAM_CODEC);
       PayloadTypeRegistry.playC2S().register(CustomUsingPacket.TYPE, CustomUsingPacket.STREAM_CODEC);
       PayloadTypeRegistry.playC2S().register(StopAnimationPacket.TYPE, StopAnimationPacket.STREAM_CODEC);
+      PayloadTypeRegistry.playS2C().register(AnimationStatusPacket.TYPE, AnimationStatusPacket.STREAM_CODEC);
       PayloadTypeRegistry.playS2C().register(StopSoundPacket.TYPE, StopSoundPacket.STREAM_CODEC);
 
       ServerPlayNetworking.registerGlobalReceiver(AnimationPacket.TYPE, (packet, context) -> {
@@ -60,29 +59,23 @@ public final class Network {
       ServerPlayNetworking.send(player, new StopSoundPacket(sessionId, soundId));
    }
 
+   public static void sendAnimationStatus(ServerPlayer player, UUID sessionId, boolean accepted) {
+      ServerPlayNetworking.send(player, new AnimationStatusPacket(sessionId, accepted));
+   }
+
    private static void beginAnimation(ServerPlayer player, UUID sessionId) {
       if (sessionId == null || player == null) {
          return;
       }
       ItemStack stack = player.getMainHandItem();
-      if (stack.isEmpty() || stack.is(ModItems.EMPTY) || !FoodDefinitionManager.init_ItemList.contains(stack.getItem())) {
-         return;
-      }
-      long id = GeoItem.getOrAssignId(stack, player.serverLevel());
-      AnimationController<GeoAnimatable> controller = ModItems.EMPTY.getAnimatableInstanceCache()
-         .getManagerForId(id).getAnimationControllers().get("eat");
-      if ((controller == null || !controller.isPlayingTriggeredAnimation())
-         && ServerAnimationManager.begin(player, sessionId, InteractionHand.MAIN_HAND, stack, id)) {
-         ModItems.EMPTY.triggerAnim(player, id, "eat", "eat");
-      }
+      boolean accepted = !stack.isEmpty() && !stack.is(ModItems.EMPTY)
+         && FoodDefinitionManager.init_ItemList.contains(stack.getItem())
+         && ServerAnimationManager.begin(player, sessionId, InteractionHand.MAIN_HAND, stack);
+      sendAnimationStatus(player, sessionId, accepted);
    }
 
    private static void stopAnimation(ServerPlayer player, UUID sessionId) {
       if (ServerAnimationManager.matchesSession(player, sessionId, InteractionHand.MAIN_HAND)) {
-         ServerAnimationManager.AnimationState state = ServerAnimationManager.get(player);
-         if (state != null) {
-            ModItems.EMPTY.stopTriggeredAnim(player, state.controllerId(), "eat", "eat");
-         }
          ServerAnimationManager.clear(player);
       }
    }
