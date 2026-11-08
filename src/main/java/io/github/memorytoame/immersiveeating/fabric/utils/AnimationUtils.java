@@ -35,6 +35,8 @@ public class AnimationUtils {
     * 保存当前正在播放 switch in 的物品，用于禁用输入、检测动画是否结束，以及左键停止该动画
     */
    private static ItemStack switchInStack = ItemStack.EMPTY;
+   private static boolean switchInStarted;
+   private static int switchInTicks;
 
    public static boolean isAnimationLocked() {
       return temp != null && lockedHotbarSlot >= 0;
@@ -51,12 +53,25 @@ public class AnimationUtils {
    public static void beginSwitchInAnimation(ItemStack stack) {
       if (stack != null && !stack.isEmpty()) {
          switchInStack = stack.copy();
+         switchInStarted = false;
+         switchInTicks = 0;
       }
    }
 
    public static void updateSwitchInAnimation() {
-      if (!switchInStack.isEmpty() && !Empty.isClientAnimationPlaying(switchInStack, "switchin")) {
-         switchInStack = ItemStack.EMPTY;
+      if (switchInStack.isEmpty()) {
+         return;
+      }
+      Minecraft mc = Minecraft.getInstance();
+      if (mc.player == null || !mc.options.getCameraType().isFirstPerson()) {
+         Empty.stopClientAnimation(switchInStack, "switchin");
+         resetSwitchInState();
+      } else if (Empty.isClientAnimationPlaying(switchInStack, "switchin")) {
+         switchInStarted = true;
+         switchInTicks = 0;
+      } else if (switchInStarted || ++switchInTicks > 40) {
+         Empty.stopClientAnimation(switchInStack, "switchin");
+         resetSwitchInState();
       }
    }
 
@@ -65,7 +80,8 @@ public class AnimationUtils {
       animationControllerId = resolveControllerId(mc);
       animationRequestPending = true;
       animationRequestTicks = 0;
-      switchInStack = ItemStack.EMPTY;
+      wasEatAnimationPlaying = false;
+      resetSwitchInState();
       activateAnimationLock(mc);
    }
 
@@ -86,39 +102,64 @@ public class AnimationUtils {
 
    public static void clearAnimationState() {
       stopAnimationControl();
+      resetCustomUseState();
       animationSessionId = null;
       animationControllerId = Long.MAX_VALUE;
       animationRequestPending = false;
       animationRequestTicks = 0;
    }
 
+   public static void onAnimationStatus(UUID sessionId, boolean accepted) {
+      if (!sessionId.equals(animationSessionId) || !isAnimationLocked()) {
+         return;
+      }
+      Minecraft mc = Minecraft.getInstance();
+      if (!accepted || mc.player == null || !mc.options.getCameraType().isFirstPerson()) {
+         stopAnimationControl();
+      } else if (animationRequestPending) {
+         Empty.triggerClientAnimation(temp, "eat");
+         animationRequestPending = false;
+         animationRequestTicks = 0;
+      }
+   }
+
    public static void checkEatAnimationState() {
       refreshAnimationControllerId(Minecraft.getInstance());
-      if (animationRequestPending && ++animationRequestTicks > 40) {
-         stopAnimationControl();
-      } else {
-         boolean animationPlaying = Empty.isEatAnimationPlaying();
-         if (animationPlaying) {
-            wasEatAnimationPlaying = true;
-            animationRequestPending = false;
-         } else if (wasEatAnimationPlaying && isAnimationLocked()) {
+      if (animationRequestPending) {
+         if (++animationRequestTicks > 40) {
             stopAnimationControl();
          }
+         return;
+      }
+      if (!isAnimationLocked()) {
+         return;
+      }
+
+      // GeckoLib 5 需要渲染第一帧后才会报告动画正在播放。
+      if (Empty.isEatAnimationPlaying()) {
+         wasEatAnimationPlaying = true;
+         animationRequestTicks = 0;
+      } else if (wasEatAnimationPlaying || ++animationRequestTicks > 40) {
+         stopAnimationControl();
       }
    }
 
    public static void stopAnimationControl() {
-      if (isAnimationLocked() && animationSessionId != null) {
+      Minecraft mc = Minecraft.getInstance();
+      if (mc.getConnection() != null && isAnimationLocked() && animationSessionId != null) {
          ClientNetwork.sendStopAnimation(animationSessionId);
       }
 
-      Empty.stopEatAnimation(animationControllerId);
+      animationSessionId = null;
+      if (animationControllerId != Long.MAX_VALUE) {
+         Empty.stopEatAnimation(animationControllerId);
+      }
       if (!switchInStack.isEmpty()) {
          Empty.stopClientAnimation(switchInStack, "switchin");
       }
       ClientSoundHandler.stopLocalSounds();
-      if (Minecraft.getInstance().player != null) {
-         ClientAnimationManager.clearSession(Minecraft.getInstance().player);
+      if (mc.player != null) {
+         ClientAnimationManager.clearSession(mc.player);
       }
 
       temp = null;
@@ -127,7 +168,7 @@ public class AnimationUtils {
       animationRequestPending = false;
       animationRequestTicks = 0;
       animationControllerId = Long.MAX_VALUE;
-      switchInStack = ItemStack.EMPTY;
+      resetSwitchInState();
       CameraRotationComposer.clearBlockbenchRotation();
    }
 
@@ -144,7 +185,7 @@ public class AnimationUtils {
       animationRequestTicks = 0;
       animationSessionId = null;
       animationControllerId = Long.MAX_VALUE;
-      switchInStack = ItemStack.EMPTY;
+      resetSwitchInState();
       CameraRotationComposer.clearBlockbenchRotation();
    }
 
@@ -165,7 +206,7 @@ public class AnimationUtils {
    }
 
    public static void updateCustomUseState(Minecraft mc) {
-      if (mc.player == null) {
+      if (mc.player == null || !mc.options.getCameraType().isFirstPerson()) {
          resetCustomUseState();
       } else {
          boolean usingCustomItem = mc.player.isUsingItem()
@@ -197,6 +238,9 @@ public class AnimationUtils {
    }
 
    public static void playCustomUseReequipAnimation(Minecraft mc, ItemStack stack) {
+      if (mc.player == null || !mc.options.getCameraType().isFirstPerson()) {
+         return;
+      }
       if (stack != null && !stack.isEmpty()) {
          if (AnimationResourceChecker.hasAnimation(stack, "switchin")) {
             beginSwitchInAnimation(stack);
@@ -215,5 +259,11 @@ public class AnimationUtils {
       wasUsingCustomItem = false;
       customUseReequipHandled = false;
       customUseStack = ItemStack.EMPTY;
+   }
+
+   private static void resetSwitchInState() {
+      switchInStack = ItemStack.EMPTY;
+      switchInStarted = false;
+      switchInTicks = 0;
    }
 }

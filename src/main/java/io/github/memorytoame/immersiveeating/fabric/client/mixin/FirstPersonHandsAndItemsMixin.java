@@ -1,28 +1,15 @@
 package io.github.memorytoame.immersiveeating.fabric.client.mixin;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.mojang.blaze3d.vertex.PoseStack;
-import io.github.memorytoame.immersiveeating.fabric.client.animation.GeckoLibAssetPaths;
+import io.github.memorytoame.immersiveeating.fabric.client.animation.AnimationResourceChecker;
 import io.github.memorytoame.immersiveeating.fabric.common.content.definition.FoodDefinitionManager;
 import io.github.memorytoame.immersiveeating.fabric.common.content.item.Empty;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.nio.charset.StandardCharsets;
-
 import io.github.memorytoame.immersiveeating.fabric.utils.AnimationUtils;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.FirstPersonHandsAndItemsRenderer;
-import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.player.FirstPersonHandsAndItems;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.state.level.FirstPersonHandsAndItemsRenderState;
-import net.minecraft.client.renderer.state.level.PlayerRenderState;
-import net.minecraft.client.renderer.entity.state.AvatarRenderState;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -31,8 +18,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Environment(EnvType.CLIENT)
-@Mixin(FirstPersonHandsAndItemsRenderer.class)
-public abstract class ItemInHandRendererMixin {
+@Mixin(FirstPersonHandsAndItems.class)
+public abstract class FirstPersonHandsAndItemsMixin {
    @Unique
    private ItemStack food$selectedMainHandItem = ItemStack.EMPTY;
    @Unique
@@ -47,35 +34,66 @@ public abstract class ItemInHandRendererMixin {
    private boolean food$hasTrackedRenderedItem;
    @Unique
    private boolean food$waitingForSwitchOut;
+   @Unique
+   private boolean food$switchOutStarted;
+   @Unique
+   private int food$switchOutStartTick;
 
-   @Inject(method = "submitHandsWithItems", at = @At("HEAD"))
+   @Inject(method = "tick", at = @At("HEAD"))
+   private void food$clearThirdPersonAnimations(LocalPlayer player, CallbackInfo ci) {
+      if (!Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
+         this.food$stopSwitchAnimations();
+         this.food$resetTracking();
+      }
+   }
+
+   @Inject(
+      method = "extractRenderState",
+      at = @At(
+         value = "INVOKE",
+         target = "Lnet/minecraft/client/renderer/item/ItemStackRenderState;clear()V",
+         ordinal = 0
+      )
+   )
    private void food$prepareFirstPersonState(
+      LocalPlayer player,
       float partialTicks,
-      PoseStack poseStack,
-      SubmitNodeCollector submitNodeCollector,
-      PlayerRenderState playerState,
       FirstPersonHandsAndItemsRenderState state,
       CallbackInfo ci
    ) {
+      if (!Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
+         this.food$stopSwitchAnimations();
+         this.food$resetTracking();
+         return;
+      }
+
       ItemStack selectedMainHandItem = state.mainHandItem;
       if (!this.food$hasTrackedSelectedItem) {
          this.food$selectedMainHandItem = selectedMainHandItem.copy();
          this.food$hasTrackedSelectedItem = true;
       } else if (!ItemStack.isSameItemSameComponents(this.food$selectedMainHandItem, selectedMainHandItem)) {
          this.food$selectedMainHandItem = selectedMainHandItem.copy();
-         if (!this.food$waitingForSwitchOut && food$trigger(this.food$renderedMainHandItem, "switchout")) {
+         if (this.food$waitingForSwitchOut) {
+            this.food$pendingMainHandItem = selectedMainHandItem.copy();
+         } else if (food$trigger(this.food$renderedMainHandItem, "switchout")) {
             this.food$switchOutItem = this.food$renderedMainHandItem.copy();
             this.food$pendingMainHandItem = selectedMainHandItem.copy();
             this.food$waitingForSwitchOut = true;
+            this.food$switchOutStarted = false;
+            this.food$switchOutStartTick = player.tickCount;
          }
       }
 
       if (this.food$waitingForSwitchOut) {
-         if (Empty.isClientAnimationPlaying(this.food$switchOutItem, "switchout")) {
+         boolean playing = Empty.isClientAnimationPlaying(this.food$switchOutItem, "switchout");
+         this.food$switchOutStarted |= playing;
+         boolean awaitingFirstFrame = !this.food$switchOutStarted && player.tickCount - this.food$switchOutStartTick <= 40;
+         if (playing || awaitingFirstFrame) {
             state.mainHandItem = this.food$switchOutItem.copy();
             state.mainHandHeight = 1.0F;
             state.oldMainHandHeight = 1.0F;
          } else {
+            Empty.stopClientAnimation(this.food$switchOutItem, "switchout");
             state.mainHandItem = this.food$pendingMainHandItem.copy();
             state.mainHandHeight = 0.0F;
             state.oldMainHandHeight = 0.0F;
@@ -94,27 +112,9 @@ public abstract class ItemInHandRendererMixin {
       }
 
       if ((this.food$isCustomMainHand(state.mainHandItem) || this.food$isCustomMainHand(this.food$renderedMainHandItem))
-         && !food$isVanillaUse(playerState, InteractionHand.MAIN_HAND, state.mainHandItem)) {
+         && !player.isUsingItem()) {
          state.handRenderSelection = FirstPersonHandsAndItemsRenderState.HandRenderSelection.RENDER_MAIN_HAND_ONLY;
       }
-   }
-
-   @Unique
-   private static boolean food$isVanillaUse(
-      PlayerRenderState playerState,
-      InteractionHand hand,
-      ItemStack stack
-   ) {
-      AvatarRenderState avatar = playerState.avatarRenderState;
-      if (avatar == null || !avatar.isUsingItem || avatar.useItemHand != hand) {
-         return false;
-      }
-
-      Minecraft mc = Minecraft.getInstance();
-      return mc.player != null
-         && mc.player.isUsingItem()
-         && mc.player.getUsedItemHand() == hand
-         && ItemStack.isSameItemSameComponents(mc.player.getUseItem(), stack);
    }
 
    @Unique
@@ -124,7 +124,9 @@ public abstract class ItemInHandRendererMixin {
 
    @Unique
    private static boolean food$trigger(ItemStack stack, String controllerName) {
-      if (!stack.isEmpty() && FoodDefinitionManager.init_ItemList.contains(stack.getItem()) && food$hasAnimation(stack, controllerName)) {
+      if (Minecraft.getInstance().options.getCameraType().isFirstPerson()
+         && !stack.isEmpty() && FoodDefinitionManager.init_ItemList.contains(stack.getItem())
+         && AnimationResourceChecker.hasAnimation(stack, controllerName)) {
          if ("switchin".equals(controllerName)) {
             AnimationUtils.beginSwitchInAnimation(stack);
          }
@@ -136,26 +138,25 @@ public abstract class ItemInHandRendererMixin {
    }
 
    @Unique
-   private static boolean food$hasAnimation(ItemStack stack, String animationName) {
-      if (animationName == null || animationName.isBlank()) {
-         return false;
+   private void food$stopSwitchAnimations() {
+      if (this.food$isCustomMainHand(this.food$renderedMainHandItem)) {
+         Empty.stopClientAnimation(this.food$renderedMainHandItem, "switchin");
       }
+      if (!this.food$switchOutItem.isEmpty()) {
+         Empty.stopClientAnimation(this.food$switchOutItem, "switchout");
+      }
+   }
 
-      Identifier itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
-      String animationId = "sakura_fubuki".equals(itemId.getPath()) ? "flower_tea" : itemId.getPath();
-      Identifier animationResource = GeckoLibAssetPaths.animationResource(animationId);
-      return Minecraft.getInstance().getResourceManager().getResource(animationResource).map(resource -> {
-         try (Reader reader = new InputStreamReader(resource.open(), StandardCharsets.UTF_8)) {
-            JsonElement root = JsonParser.parseReader(reader);
-            if (!root.isJsonObject()) {
-               return false;
-            }
-
-            JsonObject animations = root.getAsJsonObject().getAsJsonObject("animations");
-            return animations != null && animations.has(animationName);
-         } catch (Exception ignored) {
-            return false;
-         }
-      }).orElse(false);
+   @Unique
+   private void food$resetTracking() {
+      this.food$selectedMainHandItem = ItemStack.EMPTY;
+      this.food$renderedMainHandItem = ItemStack.EMPTY;
+      this.food$pendingMainHandItem = ItemStack.EMPTY;
+      this.food$switchOutItem = ItemStack.EMPTY;
+      this.food$hasTrackedSelectedItem = false;
+      this.food$hasTrackedRenderedItem = false;
+      this.food$waitingForSwitchOut = false;
+      this.food$switchOutStarted = false;
+      this.food$switchOutStartTick = 0;
    }
 }

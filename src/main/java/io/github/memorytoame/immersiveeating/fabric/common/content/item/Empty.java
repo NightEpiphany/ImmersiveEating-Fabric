@@ -11,7 +11,6 @@ import com.geckolib.util.GeckoLibUtil;
 import io.github.memorytoame.immersiveeating.fabric.common.content.definition.FoodDefinitionManager;
 import io.github.memorytoame.immersiveeating.fabric.init.ModItems;
 import io.github.memorytoame.immersiveeating.fabric.unique.UniqueItem;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.BiConsumer;
@@ -37,7 +36,6 @@ public class Empty extends Item implements GeoItem {
    private static Runnable clientSoundStopHandler = () -> {};
    private static BiConsumer<InteractionHand, Item> clientCustomUseHandler = (ignoredHand, ignoredItem) -> {};
    private static BiConsumer<InteractionHand, UUID> clientFinishUseHandler = (ignoredHand, ignoredSession) -> {};
-   private final List<AnimationController<Empty>> reg_controllers = new ArrayList<>(3);
 
    public Empty(Properties pProperties) {
       super(pProperties);
@@ -95,7 +93,7 @@ public class Empty extends Item implements GeoItem {
          .getAnimationControllers()
          .get("eat");
       if (controller != null) {
-         controller.stopTriggeredAnimation();
+         controller.reset();
       }
    }
 
@@ -137,18 +135,15 @@ public class Empty extends Item implements GeoItem {
                  .getAnimationControllers()
                  .get(controllerName);
          if (controller != null) {
-            controller.stopTriggeredAnimation();
+            controller.reset();
          }
       }
    }
 
    @Override
    public void registerControllers(AnimatableManager.@NonNull ControllerRegistrar controllers) {
-      this.reg_controllers.add(this.createControl("eat"));
-      this.reg_controllers.add(this.createControl("switchin"));
-      this.reg_controllers.add(this.createControl("switchout"));
-
-      for (AnimationController<Empty> controller : this.reg_controllers) {
+      for (String name : List.of("eat", "switchin", "switchout")) {
+         AnimationController<Empty> controller = this.createControl(name);
          controller.setSoundKeyframeHandler(
             keyFrames -> {
                ItemStack animationStack = clientAnimationStackSupplier.get();
@@ -177,18 +172,17 @@ public class Empty extends Item implements GeoItem {
          controller.setCustomInstructionKeyframeHandler(keyFrames -> {
             if (keyFrames.keyframeData().getInstructions().contains("finished")) {
                ItemStack animationStack = clientAnimationStackSupplier.get();
+               UUID sessionId = clientAnimationSessionSupplier.get();
                controller.stopTriggeredAnimation();
+               clientAnimationStackClearHandler.run();
+               clientHotbarUnlockHandler.run();
                if (animationStack != null && !animationStack.isEmpty()) {
-                  clientAnimationStackClearHandler.run();
-                  UUID sessionId = clientAnimationSessionSupplier.get();
                   if (sessionId != null) {
                      clientFinishUseHandler.accept(InteractionHand.MAIN_HAND, sessionId);
                   }
 
                   clientUseReequipHandler.accept(animationStack.copy());
                }
-
-               clientHotbarUnlockHandler.run();
             }
          });
          controllers.add(controller);

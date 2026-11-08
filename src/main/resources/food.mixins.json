@@ -9,7 +9,7 @@
     "CameraMixin",
     "ClientPackSourceMixin",
     "HudMixin",
-    "ItemInHandRendererMixin",
+    "FirstPersonHandsAndItemsMixin",
     "ItemRendererMixin",
     "KeyboardHandlerMixin",
     "MinecraftMixin",
