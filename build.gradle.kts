@@ -56,7 +56,7 @@ dependencies {
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation("net.fabricmc.fabric-api:fabric-api:${providers.gradleProperty("fabric_api_version").get()}")
 	// Punchy
-	compileOnly("maven.modrinth:8aoMKplv:sou16Bcx")
+	compileOnly("maven.modrinth:8aoMKplv:310vf7OB")
 }
 
 tasks.processResources {

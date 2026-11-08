@@ -4,7 +4,6 @@ import io.github.memorytoame.immersiveeating.fabric.common.content.definition.Fo
 import io.github.memorytoame.immersiveeating.fabric.client.render.CustomRenderer;
 import io.github.memorytoame.immersiveeating.fabric.init.ModItems;
 import io.github.memorytoame.immersiveeating.fabric.unique.UniqueItem;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +40,6 @@ public class Empty extends Item implements GeoItem {
    private static BiConsumer<InteractionHand, Item> clientCustomUseHandler = (ignoredHand, ignoredItem) -> {};
    private static BiConsumer<InteractionHand, UUID> clientFinishUseHandler = (ignoredHand, ignoredSession) -> {};
    private static final Map<String, ClientAnimationContext> clientAnimationStacks = new HashMap<>(3);
-   private final List<AnimationController<Empty>> reg_controllers = new ArrayList<>(3);
 
    public Empty(Properties pProperties) {
       super(pProperties);
@@ -85,10 +83,9 @@ public class Empty extends Item implements GeoItem {
    public static void stopEatAnimation(long instanceId) {
       clientSoundStopHandler.run();
       Empty empty = ModItems.EMPTY;
-      AnimationController<?> controller = empty.getAnimatableInstanceCache()
-         .getManagerForId(instanceId)
-         .getAnimationControllers()
-         .get("eat");
+      var manager = empty.getAnimatableInstanceCache().getManagerForId(instanceId);
+      manager.stopTriggeredAnimation("eat", "eat");
+      AnimationController<?> controller = manager.getAnimationControllers().get("eat");
       if (controller != null) {
          controller.stop();
       }
@@ -152,11 +149,8 @@ public class Empty extends Item implements GeoItem {
 
    @Override
    public void registerControllers(ControllerRegistrar controllers) {
-      this.reg_controllers.add(this.createControl("eat"));
-      this.reg_controllers.add(this.createControl("switchin"));
-      this.reg_controllers.add(this.createControl("switchout"));
-
-      for (AnimationController<Empty> controller : this.reg_controllers) {
+      for (String name : List.of("eat", "switchin", "switchout")) {
+         AnimationController<Empty> controller = createControl(name);
          controller.setSoundKeyframeHandler(
             keyFrames -> {
                String controllerName = keyFrames.getController().getName();
@@ -179,9 +173,7 @@ public class Empty extends Item implements GeoItem {
                         && UniqueItem.UNIQUE_ITEM_MAP.get(mainHandId) != null) {
                         Item child_item = BuiltInRegistries.ITEM
                            .get(UniqueItem.UNIQUE_ITEM_MAP.get(mainHandId));
-                        if (child_item != null) {
-                           clientCustomUseHandler.accept(InteractionHand.MAIN_HAND, child_item);
-                        }
+                        clientCustomUseHandler.accept(InteractionHand.MAIN_HAND, child_item);
                      } else {
                         clientSoundHandler.accept(soundId);
                      }

@@ -84,7 +84,6 @@ public final class FirstPersonModEvents {
          setEnabledMethod = api.getMethod("setEnabled", boolean.class);
          return true;
       } catch (ReflectiveOperationException | RuntimeException exception) {
-         KaleidoscopeImmersiveEating.LOGGER.warn("FirstPersonMod doesn't exist.", exception);
          return false;
       }
    }

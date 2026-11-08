@@ -2,6 +2,7 @@ package io.github.memorytoame.immersiveeating.fabric.network;
 
 import io.github.memorytoame.immersiveeating.fabric.init.ModItems;
 import io.github.memorytoame.immersiveeating.fabric.network.packet.AnimationPacket;
+import io.github.memorytoame.immersiveeating.fabric.network.packet.AnimationStatusPacket;
 import io.github.memorytoame.immersiveeating.fabric.network.packet.CustomUsingPacket;
 import io.github.memorytoame.immersiveeating.fabric.network.packet.FinishUsePacket;
 import io.github.memorytoame.immersiveeating.fabric.network.packet.StopAnimationPacket;
@@ -20,9 +21,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import software.bernie.geckolib.animatable.GeoItem;
-import software.bernie.geckolib.core.animatable.GeoAnimatable;
-import software.bernie.geckolib.core.animation.AnimationController;
 
 public final class Network {
    private static boolean registered;
@@ -59,48 +57,51 @@ public final class Network {
       ServerPlayNetworking.send(player, StopSoundPacket.CHANNEL, buf);
    }
 
+   public static void sendAnimationStatus(ServerPlayer player, UUID sessionId, boolean accepted) {
+      FriendlyByteBuf buf = PacketByteBufs.create();
+      new AnimationStatusPacket(sessionId, accepted).write(buf);
+      ServerPlayNetworking.send(player, AnimationStatusPacket.CHANNEL, buf);
+   }
+
    private static void beginAnimation(ServerPlayer player, UUID sessionId) {
       if (sessionId == null || player == null) {
          return;
       }
       ItemStack stack = player.getMainHandItem();
-      if (stack.isEmpty() || stack.is(ModItems.EMPTY) || !FoodDefinitionManager.init_ItemList.contains(stack.getItem())) {
-         return;
+      boolean accepted = !stack.isEmpty() && !stack.is(ModItems.EMPTY)
+         && FoodDefinitionManager.init_ItemList.contains(stack.getItem());
+      if (accepted) {
+         ServerAnimationManager.begin(player, sessionId, InteractionHand.MAIN_HAND, stack);
       }
-      long id = GeoItem.getOrAssignId(stack, player.serverLevel());
-      AnimationController<GeoAnimatable> controller = ModItems.EMPTY.getAnimatableInstanceCache()
-         .getManagerForId(id).getAnimationControllers().get("eat");
-      if ((controller == null || !controller.isPlayingTriggeredAnimation())
-         && ServerAnimationManager.begin(player, sessionId, InteractionHand.MAIN_HAND, stack, id)) {
-         ModItems.EMPTY.triggerAnim(player, id, "eat", "eat");
-      }
+      sendAnimationStatus(player, sessionId, accepted);
    }
 
    private static void stopAnimation(ServerPlayer player, UUID sessionId) {
       if (ServerAnimationManager.matchesSession(player, sessionId, InteractionHand.MAIN_HAND)) {
-         ServerAnimationManager.AnimationState state = ServerAnimationManager.get(player);
-         if (state != null) {
-            ModItems.EMPTY.stopTriggeredAnim(player, state.controllerId(), "eat", "eat");
-         }
          ServerAnimationManager.clear(player);
       }
    }
 
    private static void finishUse(ServerPlayer player, InteractionHand hand, UUID sessionId) {
-      if (player == null || sessionId == null || !ServerAnimationManager.matchesSession(player, sessionId, hand)
-         || !ServerAnimationManager.matchesHeldStack(player)) {
+      if (player == null || sessionId == null || !ServerAnimationManager.matchesSession(player, sessionId, hand)) {
          return;
       }
-      ItemStack stack = player.getItemInHand(hand);
-      ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
-      if (UniqueItem.UNIQUE_ITEM_MAP.containsKey(itemId)) {
-         stack.shrink(1);
-         player.setItemInHand(hand, stack);
-         player.getInventory().add(new ItemStack(Items.BOWL));
-      } else if (!stack.isEmpty()) {
-         player.setItemInHand(hand, stack.finishUsingItem(player.level(), player));
+      try {
+         if (!ServerAnimationManager.matchesHeldStack(player)) {
+            return;
+         }
+         ItemStack stack = player.getItemInHand(hand);
+         ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+         if (UniqueItem.UNIQUE_ITEM_MAP.containsKey(itemId)) {
+            stack.shrink(1);
+            player.setItemInHand(hand, stack);
+            player.getInventory().add(new ItemStack(Items.BOWL));
+         } else if (!stack.isEmpty()) {
+            player.setItemInHand(hand, stack.finishUsingItem(player.level(), player));
+         }
+      } finally {
+         ServerAnimationManager.clear(player);
       }
-      ServerAnimationManager.clear(player);
    }
 
    private static void customUsing(ServerPlayer player, InteractionHand hand, Item item, int count) {

@@ -36,23 +36,30 @@ public final class InputEvents {
 
 
    public static boolean handleRightClick(Minecraft mc) {
-      if (AnimationUtils.isInputLocked()) {
-         return true;
-      }
-
       if (mc == null || !mc.options.keyUse.isDown()) {
          rightClickHandled = false;
       }
 
-      if (mc == null || mc.player == null || !Config.ENABLE_RIGHT_BUTTON.get()
+      if (mc == null || mc.player == null || !mc.options.getCameraType().isFirstPerson()) {
+         return false;
+      }
+
+      AnimationUtils.cancelIfHeldItemChanged(mc);
+      if (AnimationUtils.isInputLocked()) {
+         return true;
+      }
+
+      if (GameplayEvents.shouldAllowTargetInteraction(mc) || !Config.ENABLE_RIGHT_BUTTON.get()
          || mc.player.isCrouching() || isAnimationGui(mc.screen)) {
          return false;
       }
 
       ItemStack stack = mc.player.getMainHandItem();
-      if (!FoodDefinitionManager.init_ItemList.contains(stack.getItem())
-         || Empty.isClientAnimationPlaying(stack, "switchin")) {
+      if (!FoodDefinitionManager.init_ItemList.contains(stack.getItem())) {
          return false;
+      }
+      if (Empty.isClientAnimationPlaying(stack, "switchin")) {
+         return true;
       }
 
       if (!rightClickHandled) {
@@ -88,11 +95,7 @@ public final class InputEvents {
          startKeyboardAnimation(mc);
       }
 
-      if (AnimationUtils.isInputLocked()) {
-         return;
-      }
-
-      if (Food.DEBUG) {
+      if (Food.DEBUG && !AnimationUtils.isInputLocked()) {
          updateDebugKeys(mc);
       }
 
@@ -115,7 +118,9 @@ public final class InputEvents {
    }
 
    private static void startKeyboardAnimation(Minecraft mc) {
-      if (AnimationUtils.isAnimationLocked() || AnimationUtils.isAnimationRequestPending() || mc.player == null) {
+      if (mc.player == null || !mc.options.getCameraType().isFirstPerson()
+         || Empty.isAnimationPlaying() || GameplayEvents.shouldAllowTargetInteraction(mc) || AnimationUtils.isAnimationLocked()
+         || AnimationUtils.isAnimationRequestPending()) {
          return;
       }
 
