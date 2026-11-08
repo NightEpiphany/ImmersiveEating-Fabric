@@ -2,10 +2,12 @@ package io.github.memorytoame.immersiveeating.fabric.client.network;
 
 import io.github.memorytoame.immersiveeating.fabric.client.ClientSoundHandler;
 import io.github.memorytoame.immersiveeating.fabric.network.packet.AnimationPacket;
+import io.github.memorytoame.immersiveeating.fabric.network.packet.AnimationStatusPacket;
 import io.github.memorytoame.immersiveeating.fabric.network.packet.CustomUsingPacket;
 import io.github.memorytoame.immersiveeating.fabric.network.packet.FinishUsePacket;
 import io.github.memorytoame.immersiveeating.fabric.network.packet.StopAnimationPacket;
 import io.github.memorytoame.immersiveeating.fabric.network.packet.StopSoundPacket;
+import io.github.memorytoame.immersiveeating.fabric.utils.AnimationUtils;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.world.InteractionHand;
@@ -22,6 +24,9 @@ public final class ClientNetwork {
          return;
       }
       registered = true;
+      ClientPlayNetworking.registerGlobalReceiver(AnimationStatusPacket.TYPE, (packet, context) ->
+         context.client().execute(() -> AnimationUtils.onAnimationStatus(packet.sessionId(), packet.accepted()))
+      );
       ClientPlayNetworking.registerGlobalReceiver(StopSoundPacket.TYPE, (packet, context) ->
          context.client().execute(() -> ClientSoundHandler.stop(packet))
       );

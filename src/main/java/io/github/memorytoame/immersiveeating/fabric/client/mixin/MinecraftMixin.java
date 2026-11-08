@@ -2,7 +2,6 @@ package io.github.memorytoame.immersiveeating.fabric.client.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import io.github.memorytoame.immersiveeating.fabric.client.input.InputEvents;
 import io.github.memorytoame.immersiveeating.fabric.utils.AnimationUtils;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -18,7 +17,7 @@ public abstract class MinecraftMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;startUseItem()V")
     )
     private void food$handleRightClick(Minecraft mc, Operation<Void> original) {
-        if (!AnimationUtils.isInputLocked() && !InputEvents.handleRightClick(mc)) {
+        if (!AnimationUtils.isInputLocked()) {
             original.call(mc);
         }
     }

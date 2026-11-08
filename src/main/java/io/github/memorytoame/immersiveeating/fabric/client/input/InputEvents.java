@@ -6,17 +6,18 @@ import io.github.memorytoame.immersiveeating.fabric.client.events.GameplayEvents
 import io.github.memorytoame.immersiveeating.fabric.common.config.Config;
 import io.github.memorytoame.immersiveeating.fabric.common.content.definition.FoodDefinitionManager;
 import io.github.memorytoame.immersiveeating.fabric.common.content.item.Empty;
-import io.github.memorytoame.immersiveeating.fabric.client.network.ClientNetwork;
 import io.github.memorytoame.immersiveeating.fabric.mixin.accessor.InventoryAccessor;
 import io.github.memorytoame.immersiveeating.fabric.utils.AnimationUtils;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
 
 @Environment(EnvType.CLIENT)
@@ -31,38 +32,56 @@ public final class InputEvents {
    }
 
    public static void register() {
+      GameplayEvents.register();
       ClientTickEvents.START_CLIENT_TICK.register(InputEvents::onClientTickStart);
       ClientTickEvents.END_CLIENT_TICK.register(InputEvents::onClientTick);
+      UseItemCallback.EVENT.register((player, level, hand) -> {
+         if (!level.isClientSide() || hand != InteractionHand.MAIN_HAND) {
+            return InteractionResult.PASS;
+         }
+         Minecraft mc = Minecraft.getInstance();
+         if (player == mc.player && handleRightClick(mc)) {
+            // CONSUME handles this click without sending a vanilla use-item packet.
+            return InteractionResult.CONSUME;
+         }
+         return InteractionResult.PASS;
+      });
    }
 
    public static boolean handleRightClick(Minecraft mc) {
-      if (AnimationUtils.isInputLocked()) {
-         return true;
-      }
-
       if (mc == null || !mc.options.keyUse.isDown()) {
          rightClickHandled = false;
       }
 
-      if (mc == null || mc.player == null || !Config.ENABLE_RIGHT_BUTTON.get()
-              || mc.player.isCrouching() || isAnimationGui(mc.screen)) {
+      if (mc == null || mc.player == null || mc.player.isSpectator() || !mc.options.getCameraType().isFirstPerson()) {
          return false;
       }
 
+      AnimationUtils.cancelIfHeldItemChanged(mc);
       ItemStack stack = mc.player.getMainHandItem();
-      if (!FoodDefinitionManager.init_ItemList.contains(stack.getItem())
-              || Empty.isClientAnimationPlaying(stack, "switchin")) {
+      if (!FoodDefinitionManager.init_ItemList.contains(stack.getItem())) {
+         return false;
+      }
+
+      if (AnimationUtils.isInputLocked() || Empty.isAnimationPlaying()) {
+         return true;
+      }
+
+      if (!Config.ENABLE_RIGHT_BUTTON.get() || mc.player.isCrouching() || isAnimationGui(mc.screen)
+         || GameplayEvents.shouldAllowTargetInteraction(mc)) {
          return false;
       }
 
       if (!rightClickHandled) {
-         GameplayEvents.startRightClickAnimation(stack);
-         rightClickHandled = true;
+         rightClickHandled = GameplayEvents.startRightClickAnimation(stack);
       }
-      return true;
+      return rightClickHandled;
    }
 
    private static void onClientTickStart(Minecraft mc) {
+      if (!mc.options.getCameraType().isFirstPerson() && AnimationUtils.isInputLocked()) {
+         AnimationUtils.stopAnimationControl();
+      }
       AnimationUtils.updateSwitchInAnimation();
       if (mc.player == null || !mc.options.keyUse.isDown()) {
          rightClickHandled = false;
@@ -87,21 +106,6 @@ public final class InputEvents {
          startKeyboardAnimation(mc);
       }
 
-      // 默认解除动画锁定状态，作为兜底
-      if (AnimationUtils.isInputLocked()
-              && (mc.screen == null || isAnimationGui(mc.screen))
-              && mc.options.getCameraType().isFirstPerson()) {
-         AnimationUtils.checkEatAnimationState();
-      }
-
-      if (AnimationUtils.isInputLocked()) {
-         return;
-      }
-
-      if (Food.DEBUG) {
-         updateDebugKeys(mc);
-      }
-
       AnimationUtils.updateCustomUseState(mc);
       if (!isAnimationGui(mc.screen)) {
          AnimationUtils.cancelIfHeldItemChanged(mc);
@@ -115,23 +119,21 @@ public final class InputEvents {
          } else {
             AnimationUtils.lockedHotbarSlot = -1;
          }
-      } else if (AnimationUtils.isAnimationLocked()) {
+      } else if (AnimationUtils.isInputLocked()) {
          AnimationUtils.stopAnimationControl();
       }
 
+      if (!AnimationUtils.isInputLocked() && Food.DEBUG) {
+         updateDebugKeys(mc);
+      }
    }
 
    private static void startKeyboardAnimation(Minecraft mc) {
-      if (AnimationUtils.isAnimationLocked() || AnimationUtils.isAnimationRequestPending() || mc.player == null) {
+      if (mc.player == null || GameplayEvents.shouldAllowTargetInteraction(mc)) {
          return;
       }
 
-      ItemStack stack = mc.player.getMainHandItem();
-      if (!Empty.isClientAnimationPlaying(stack, "switchin")
-         && FoodDefinitionManager.init_ItemList.contains(stack.getItem())) {
-         AnimationUtils.beginAnimationSession(mc);
-         ClientNetwork.sendAnimation(AnimationUtils.getAnimationSessionId());
-      }
+      GameplayEvents.startRightClickAnimation(mc.player.getMainHandItem());
    }
 
    private static void updateDebugKeys(Minecraft mc) {
@@ -164,6 +166,6 @@ public final class InputEvents {
    }
 
    private static boolean isAnimationGui(Screen screen) {
-      return screen instanceof ChatScreen || screen instanceof AbstractContainerScreen;
+      return screen instanceof ChatScreen || screen instanceof AbstractContainerScreen<?>;
    }
 }
